@@ -14,6 +14,8 @@ class ComparisonResult(Base):
     finetuned_model_name = Column(String, nullable=False)
     preferred_model = Column(String, nullable=False)  # 'base' or 'finetuned'
     code_prefix = Column(Text, nullable=False)
+    base_completion = Column(Text, nullable=False)
+    finetuned_completion = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 # Create database and tables

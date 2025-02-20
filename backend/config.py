@@ -27,3 +27,6 @@ class Config:
 
     # Frontend URL
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    
+    # Admin users
+    ADMIN_USERS = os.getenv('ADMIN_USERS', '').strip()

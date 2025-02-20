@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import CodeComparison from '../components/CodeComparison';
 import UserAvatar from '../components/UserAvatar';
+import { CheckCircleIcon } from '@heroicons/react/24/outline';
+
+type SubmissionState = 'idle' | 'submitting' | 'success';
 
 export default function Home() {
   const [prefix, setPrefix] = useState('');
@@ -14,6 +17,8 @@ export default function Home() {
   const [modelAIsBase, setModelAIsBase] = useState<boolean | null>(null);
   const [preferredModel, setPreferredModel] = useState<'A' | 'B' | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [submissionState, setSubmissionState] = useState<SubmissionState>('idle');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +49,8 @@ export default function Home() {
 
   const handlePreferenceSubmit = async () => {
     if (!preferredModel || modelAIsBase === null) return;
+    
+    setSubmissionState('submitting');
 
     const preferredModelType = (
       (preferredModel === 'A' && modelAIsBase) ||
@@ -60,16 +67,25 @@ export default function Home() {
         body: JSON.stringify({
           preferredModel: preferredModelType,
           codePrefix: prefix,
-          modelAWasBase: modelAIsBase
+          baseCompletion: modelAIsBase ? results.baseResponse : results.finetunedResponse,
+          finetunedCompletion: modelAIsBase ? results.finetunedResponse : results.baseResponse
         }),
       });
-      // Reset the form
-      setPrefix('');
-      setResults(null);
-      setPreferredModel(null);
-      setModelAIsBase(null);
+
+      setSubmissionState('success');
+      
+      // Reset form after 2 seconds
+      setTimeout(() => {
+        setPrefix('');
+        setResults(null);
+        setPreferredModel(null);
+        setModelAIsBase(null);
+        setSubmissionState('idle');
+      }, 2000);
+
     } catch (error) {
       console.error('Error submitting preference:', error);
+      setSubmissionState('idle');
     }
   };
 
@@ -214,6 +230,21 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* Success overlay */}
+      {submissionState !== 'idle' && (
+        <div className={`fixed inset-0 bg-black/50 flex items-center justify-center transition-opacity duration-300
+          ${submissionState === 'success' ? 'opacity-100' : 'opacity-0'}`}>
+          <div className={`bg-gray-800 rounded-lg p-8 transform transition-all duration-300
+            ${submissionState === 'success' ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+            <div className="flex flex-col items-center gap-4">
+              <CheckCircleIcon className="w-16 h-16 text-green-400 animate-bounce" />
+              <h2 className="text-2xl font-semibold text-white">Thank you!</h2>
+              <p className="text-gray-300">Your feedback has been submitted successfully.</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 } 
