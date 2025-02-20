@@ -22,7 +22,7 @@ app.add_middleware(
     session_cookie="pepsi_session",
     max_age=7 * 24 * 60 * 60,  # 7 days in seconds
     same_site="lax",
-    https_only=False,  # Set to True in production
+    https_only=False,  # Set to True once certs are sorted out and we deploy to AWS!
 )
 
 # CORS configuration
