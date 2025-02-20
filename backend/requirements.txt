@@ -7,5 +7,6 @@ tqdm==4.67.1
 accelerate==1.4.0
 safetensors==0.5.2
 sentencepiece==0.2.0
+flask-cors==4.0.0
 
 # Platform specific requirements are in requirements-cuda.txt and requirements-macos.txt

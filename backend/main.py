@@ -3,8 +3,10 @@ import torch
 from flask import Flask, request, render_template_string
 import platform
 import os
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app)
 
 def get_device():
     if torch.cuda.is_available():
