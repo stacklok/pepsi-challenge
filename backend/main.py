@@ -1,6 +1,6 @@
 from peft import PeftModel
 import torch
-from fastapi import FastAPI, Request, HTTPException, Form
+from fastapi import FastAPI, Request, HTTPException, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 import platform
@@ -10,6 +10,8 @@ import random
 from config import Config
 import secrets
 from starlette.middleware.sessions import SessionMiddleware
+from typing import Optional
+from sqlalchemy import or_
 
 app = FastAPI()
 
@@ -181,7 +183,9 @@ async def submit_preference(request: Request):
         base_model_name=Config.BASE_MODEL_NAME,
         finetuned_model_name=Config.FINETUNED_MODEL_NAME,
         preferred_model=data['preferredModel'],
-        code_prefix=data['codePrefix']
+        code_prefix=data['codePrefix'],
+        base_completion=data['baseCompletion'],
+        finetuned_completion=data['finetunedCompletion']
     )
 
     db_session.add(result)
@@ -189,6 +193,72 @@ async def submit_preference(request: Request):
     db_session.close()
 
     return {"success": True}
+
+def is_admin(username: str) -> bool:
+    admin_users = Config.ADMIN_USERS.split(',')
+    return username in admin_users
+
+@app.get("/auth/is_admin")
+async def check_admin(request: Request):
+    if "user" not in request.session:
+        return {"is_admin": False}
+    return {"is_admin": is_admin(request.session["user"]["username"])}
+
+@app.get("/api/admin/results")
+async def get_results(
+    request: Request,
+    page: int = Query(1, ge=1),
+    per_page: int = Query(10, ge=1, le=100),
+    search: Optional[str] = None
+):
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    db_session = DBSession()
+    query = db_session.query(ComparisonResult)
+    
+    # Apply search if provided
+    if search:
+        search = f"%{search}%"
+        query = query.filter(
+            or_(
+                ComparisonResult.github_username.ilike(search),
+                ComparisonResult.code_prefix.ilike(search),
+                ComparisonResult.preferred_model.ilike(search)
+            )
+        )
+    
+    # Get total count for pagination
+    total = query.count()
+    
+    # Apply pagination
+    results = query.order_by(ComparisonResult.created_at.desc()) \
+                  .offset((page - 1) * per_page) \
+                  .limit(per_page) \
+                  .all()
+    
+    # Convert results to dict
+    results = [{
+        "id": r.id,
+        "github_username": r.github_username,
+        "preferred_model": r.preferred_model,
+        "code_prefix": r.code_prefix,
+        "base_completion": r.base_completion,
+        "finetuned_completion": r.finetuned_completion,
+        "base_model_name": r.base_model_name,
+        "finetuned_model_name": r.finetuned_model_name,
+        "created_at": r.created_at.isoformat()
+    } for r in results]
+    
+    db_session.close()
+    
+    return {
+        "results": results,
+        "total": total,
+        "page": page,
+        "per_page": per_page,
+        "total_pages": (total + per_page - 1) // per_page
+    }
 
 if __name__ == "__main__":
     import uvicorn

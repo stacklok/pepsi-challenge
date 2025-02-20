@@ -14,6 +14,7 @@ export default function Home() {
   const [modelAIsBase, setModelAIsBase] = useState<boolean | null>(null);
   const [preferredModel, setPreferredModel] = useState<'A' | 'B' | null>(null);
   const [user, setUser] = useState<any>(null);
+  const [submitted, setSubmitted] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,14 +61,12 @@ export default function Home() {
         body: JSON.stringify({
           preferredModel: preferredModelType,
           codePrefix: prefix,
-          modelAWasBase: modelAIsBase
+          baseCompletion: modelAIsBase ? results.baseResponse : results.finetunedResponse,
+          finetunedCompletion: modelAIsBase ? results.finetunedResponse : results.baseResponse
         }),
       });
-      // Reset the form
-      setPrefix('');
-      setResults(null);
-      setPreferredModel(null);
-      setModelAIsBase(null);
+
+      setSubmitted(true);
     } catch (error) {
       console.error('Error submitting preference:', error);
     }

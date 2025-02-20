@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 
 type UserAvatarProps = {
   user: {
@@ -13,6 +14,7 @@ export default function UserAvatar({ user }: UserAvatarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const [showDropdown, setShowDropdown] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   const handleLogout = () => {
     fetch('http://localhost:5000/auth/logout', {
@@ -23,6 +25,19 @@ export default function UserAvatar({ user }: UserAvatarProps) {
     })
     .catch(console.error);
   };
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const response = await fetch('http://localhost:5000/auth/is_admin', {
+        credentials: 'include'
+      });
+      const data = await response.json();
+      setIsAdmin(data.is_admin);
+    };
+    if (user) {
+      checkAdmin();
+    }
+  }, [user]);
 
   if (!user) {
     return (
@@ -55,6 +70,11 @@ export default function UserAvatar({ user }: UserAvatarProps) {
         <div className="px-4 py-2 border-b border-gray-700">
           <p className="text-sm text-gray-300">{user.username}</p>
         </div>
+        {isAdmin && (
+          <Link href="/admin" className="block w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
+            Admin Panel
+          </Link>
+        )}
         <button
           onClick={handleLogout}
           className="w-full text-left px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"
