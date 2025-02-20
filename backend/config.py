@@ -6,7 +6,7 @@ load_dotenv()
 
 class Config:
     # Flask
-    SECRET_KEY = os.getenv('FLASK_SECRET_KEY', 'your-secret-key-for-development')
+    SECRET_KEY = os.getenv('SESSION_SECRET_KEY', 'your-secret-key-for-development')
 
     # Session
     SESSION_FILE_DIR = os.getenv('SESSION_FILE_DIR', os.path.join(os.path.dirname(__file__), 'sessions'))

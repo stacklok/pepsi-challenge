@@ -1,4 +1,8 @@
-# Pepsi-Taste. LLM model evaluation
+# Pepsi-Challenge: LLM Model Evaluation
+
+<p align="center">
+  <img src="assets/pepsi-logo.png" alt="Pepsi Taste Logo" width="400"/>
+</p>
 
 ## Introduction
 
@@ -42,10 +46,31 @@ For CUDA systems:
 pip install -r requirements-cuda.txt
 ```
 
-Finally, run the application:
+Additionally, install FastAPI dependencies:
+```bash
+pip install fastapi uvicorn python-multipart authlib starlette
+```
+
+### Running the Server
+
+You can start the server in two ways:
+
+1. Using Python:
 ```bash
 python main.py
 ```
+
+2. Using uvicorn directly (recommended for development):
+```bash
+uvicorn backend.main:app --reload --port 8000
+```
+
+The `--reload` flag enables auto-reload during development.
+
+Access points:
+- API: http://localhost:8000
+- Interactive API docs: http://localhost:8000/docs
+- Alternative API docs: http://localhost:8000/redoc
 
 ### Prerequisites
 
@@ -61,25 +86,19 @@ The application will automatically detect the available GPU type and optimize ac
 
 1. Create a GitHub OAuth application at https://github.com/settings/developers
    - Set Homepage URL to `http://localhost:3000`
-   - Set Authorization callback URL to `http://localhost:3000/auth/callback`
+   - Set Authorization callback URL to `http://localhost:8000/auth/callback`
 
 2. Create a `.env` file in the `backend` directory:
-   ```
-   FLASK_SECRET_KEY=your-secret-key-here
+   ```env
+   SESSION_SECRET_KEY=your-secret-key-here
    GITHUB_CLIENT_ID=your-github-client-id
    GITHUB_CLIENT_SECRET=your-github-client-secret
-   GITHUB_CALLBACK_URL=http://localhost:5000/auth/callback
-   ```
-
-3. Install dependencies:
-   ```bash
-   cd backend
-   pip install -r requirements.txt
-   ```
-
-4. Run the backend:
-   ```bash
-   python main.py
+   GITHUB_CALLBACK_URL=http://localhost:8000/auth/callback
+   
+   # Model Configuration
+   BASE_MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
+   FINETUNED_MODEL_NAME=stacklok/Qwen2.5-Coder-0.5B-codegate
+   FRONTEND_URL=http://localhost:3000
    ```
 
 ### Frontend Setup
@@ -97,10 +116,9 @@ The application will automatically detect the available GPU type and optimize ac
 
 The application will be available at:
 - Frontend: http://localhost:3000
-- Backend: http://localhost:5000
+- Backend: http://localhost:8000
 
-
-## Read the results
+## Viewing Results
 
 To view the comparison results, use the following command:
 
@@ -125,6 +143,16 @@ This will show:
 - First 30 characters of their code prefix
 - Whether Model A was the base model
 - When the comparison was made (in local time)
+
+## API Documentation
+
+You can access interactive API documentation:
+
+- Swagger UI: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+These provide detailed documentation of all available endpoints, request/response schemas,
+and the ability to test endpoints directly from the browser.
 
 
 
