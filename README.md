@@ -130,7 +130,6 @@ SELECT
     cr.github_username as "GitHub Username",
     cr.preferred_model as "Preferred Model",
     substr(cr.code_prefix, 1, 30) as "Code Prefix (first 30 chars)",
-    cr.model_a_was_base as "Model A was Base?",
     datetime(cr.created_at, 'localtime') as "Submission Time"
 FROM comparison_results cr
 ORDER BY cr.created_at DESC;
@@ -141,7 +140,6 @@ This will show:
 - The GitHub username of who made the comparison
 - Which model they preferred ('base' or 'finetuned')
 - First 30 characters of their code prefix
-- Whether Model A was the base model
 - When the comparison was made (in local time)
 
 ## API Documentation

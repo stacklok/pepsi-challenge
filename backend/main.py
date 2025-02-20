@@ -181,8 +181,7 @@ async def submit_preference(request: Request):
         base_model_name=Config.BASE_MODEL_NAME,
         finetuned_model_name=Config.FINETUNED_MODEL_NAME,
         preferred_model=data['preferredModel'],
-        code_prefix=data['codePrefix'],
-        model_a_was_base=data['modelAWasBase']
+        code_prefix=data['codePrefix']
     )
 
     db_session.add(result)
