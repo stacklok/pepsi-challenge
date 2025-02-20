@@ -26,7 +26,10 @@ class Config:
     FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-0.5B-codegate"
 
     # Frontend URL
-    FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
+    FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://acme.com')
     
     # Admin users
     ADMIN_USERS = os.getenv('ADMIN_USERS', '').strip()
+
+    # Update callback URL to use domain
+    GITHUB_CALLBACK_URL = os.getenv('GITHUB_CALLBACK_URL', 'https://acme.com/auth/callback')

@@ -17,7 +17,9 @@ platforms, so a local dev environment can be setup.
 - NVIDIA GPUs: CUDA 12.1
 - Apple Silicon: Metal Performance Shaders (MPS)
 
-## Server Setup
+## Deployment
+
+### Development Setup
 
 First, clone the repository:
 ```bash
@@ -51,102 +53,92 @@ Additionally, install FastAPI dependencies:
 pip install fastapi uvicorn python-multipart authlib starlette
 ```
 
-### Running the Server
+### Production Deployment
 
-You can start the server in two ways:
+The application is designed to run behind a reverse proxy (like Nginx) with the following architecture:
 
-1. Using Python:
-```bash
-python main.py
+```
+Internet -> Nginx (443) -> Frontend (3000)
+                       -> Backend (5000)
 ```
 
-2. Using uvicorn directly (recommended for development):
-```bash
-uvicorn backend.main:app --reload --port 8000
+#### Nginx Configuration
+
+Create a configuration file for your domain:
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name your-domain.com;
+
+    # SSL configuration
+    ssl_certificate /path/to/cert.pem;
+    ssl_certificate_key /path/to/key.pem;
+
+    # Frontend
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # Backend API routes
+    location ~ ^/(api|auth|submit-preference) {
+        proxy_pass http://127.0.0.1:5000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
 ```
 
-The `--reload` flag enables auto-reload during development.
-
-### Prerequisites
-
-The test environment supports:
-- NVIDIA GPUs: Deep Learning VM with CUDA 12.1, M126, Debian 11, Python 3.10
-- Apple Silicon: macOS with Python 3.10+ and PyTorch 2.0+
-
-The application will automatically detect the available GPU type and optimize accordingly.
-
-## Setup
-
-### Backend Setup
+#### Environment Configuration
 
 1. Create a GitHub OAuth application at https://github.com/settings/developers
-   - Set Homepage URL to `http://localhost:3000`
-   - Set Authorization callback URL to `http://localhost:8000/auth/callback`
+   - Set Homepage URL to `https://your-domain.com`
+   - Set Authorization callback URL to `https://your-domain.com/auth/callback`
 
-2. Create a `.env` file in the `backend` directory:
+2. Update the `.env` file in the `backend` directory:
    ```env
    SESSION_SECRET_KEY=your-secret-key-here
    GITHUB_CLIENT_ID=your-github-client-id
    GITHUB_CLIENT_SECRET=your-github-client-secret
-   GITHUB_CALLBACK_URL=http://localhost:8000/auth/callback
+   GITHUB_CALLBACK_URL=https://your-domain.com/auth/callback
    
    # Model Configuration
    BASE_MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
    FINETUNED_MODEL_NAME=stacklok/Qwen2.5-Coder-0.5B-codegate
-   FRONTEND_URL=http://localhost:3000
+   FRONTEND_URL=https://your-domain.com
+   
+   # Admin Configuration
+   ADMIN_USERS=admin1,admin2
    ```
 
-### Frontend Setup
+#### Running in Production
 
-1. Install dependencies:
-   ```bash
-   cd frontend
-   npm install
-   ```
-
-2. Run the development server:
-   ```bash
-   npm run dev
-   ```
-
-The application will be available at:
-- Frontend: http://localhost:3000
-- Backend: http://localhost:8000
-
-## Viewing Results
-
-To view the comparison results, use the following command:
-
+1. Backend:
 ```bash
-sqlite3 comparisons.db <<EOF
-.mode column
-.headers on
-SELECT 
-    cr.github_username as "GitHub Username",
-    cr.preferred_model as "Preferred Model",
-    substr(cr.code_prefix, 1, 30) as "Code Prefix (first 30 chars)",
-    datetime(cr.created_at, 'localtime') as "Submission Time"
-FROM comparison_results cr
-ORDER BY cr.created_at DESC;
-EOF
+cd backend
+uvicorn main:app --host 127.0.0.1 --port 5000
 ```
 
-This will show:
-- The GitHub username of who made the comparison
-- Which model they preferred ('base' or 'finetuned')
-- First 30 characters of their code prefix
-- When the comparison was made (in local time)
+2. Frontend:
+```bash
+cd frontend
+npm run build
+npm run start
+```
 
-## API Documentation
+Consider using process managers like PM2 or systemd to manage these services.
 
-You can access interactive API documentation:
+## Server Setup
 
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-These provide detailed documentation of all available endpoints, request/response schemas,
-and the ability to test endpoints directly from the browser.
-
-
-
-
+First, clone the repository:
+```

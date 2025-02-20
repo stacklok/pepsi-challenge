@@ -25,7 +25,7 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/api/generate', {
+      const response = await fetch('/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -58,7 +58,7 @@ export default function Home() {
     ) ? 'base' : 'finetuned';
 
     try {
-      await fetch('http://localhost:5000/submit-preference', {
+      await fetch('/submit-preference', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,12 +90,12 @@ export default function Home() {
   };
 
   const handleLogin = () => {
-    window.location.href = 'http://localhost:5000/auth/login';
+    window.location.href = '/auth/login';
   };
 
   // Only check user status once when component mounts
   useEffect(() => {
-    fetch('http://localhost:5000/auth/user', {
+    fetch('/auth/user', {
       credentials: 'include'
     })
     .then(res => res.json())
