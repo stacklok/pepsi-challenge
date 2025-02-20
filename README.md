@@ -67,11 +67,6 @@ uvicorn backend.main:app --reload --port 8000
 
 The `--reload` flag enables auto-reload during development.
 
-Access points:
-- API: http://localhost:8000
-- Interactive API docs: http://localhost:8000/docs
-- Alternative API docs: http://localhost:8000/redoc
-
 ### Prerequisites
 
 The test environment supports:
