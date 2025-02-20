@@ -7,7 +7,7 @@ Base = declarative_base()
 
 class ComparisonResult(Base):
     __tablename__ = 'comparison_results'
-    
+
     id = Column(Integer, primary_key=True)
     github_username = Column(String, nullable=False)
     base_model_name = Column(String, nullable=False)
@@ -22,4 +22,4 @@ engine = create_engine('sqlite:///comparisons.db')
 Base.metadata.create_all(engine)
 
 # Create session factory
-Session = sessionmaker(bind=engine) 
+Session = sessionmaker(bind=engine)
