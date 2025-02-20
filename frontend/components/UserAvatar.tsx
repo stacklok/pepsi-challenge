@@ -17,7 +17,7 @@ export default function UserAvatar({ user }: UserAvatarProps) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const handleLogout = () => {
-    fetch('http://localhost:5000/auth/logout', {
+    fetch('/auth/logout', {
       credentials: 'include'
     })
     .then(() => {
@@ -28,7 +28,7 @@ export default function UserAvatar({ user }: UserAvatarProps) {
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const response = await fetch('http://localhost:5000/auth/is_admin', {
+      const response = await fetch('/auth/is_admin', {
         credentials: 'include'
       });
       const data = await response.json();
@@ -41,7 +41,7 @@ export default function UserAvatar({ user }: UserAvatarProps) {
 
   if (!user) {
     return (
-      <a href="http://localhost:5000/auth/login" 
+      <a href="/auth/login" 
          className="px-4 py-2 bg-gray-800 rounded-lg text-white hover:bg-gray-700">
         Login with GitHub
       </a>

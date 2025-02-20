@@ -38,7 +38,7 @@ export default function AdminPanel() {
   const fetchResults = async (pageNum: number, searchTerm: string) => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/admin/results?page=${pageNum}&search=${encodeURIComponent(searchTerm)}`,
+        `/api/admin/results?page=${pageNum}&search=${encodeURIComponent(searchTerm)}`,
         { credentials: 'include' }
       );
       
