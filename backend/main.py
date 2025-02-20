@@ -4,15 +4,12 @@ from fastapi import FastAPI, Request, HTTPException, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 import platform
-import os
 from authlib.integrations.starlette_client import OAuth
 from models import Session as DBSession, ComparisonResult
 import random
 from config import Config
 import secrets
-import time
 from starlette.middleware.sessions import SessionMiddleware
-from apscheduler.schedulers.background import BackgroundScheduler
 
 app = FastAPI()
 
@@ -194,23 +191,6 @@ async def submit_preference(request: Request):
 
     return {"success": True}
 
-def cleanup_old_sessions():
-    """Remove expired session files"""
-    now = time.time()
-    session_dir = Config.SESSION_FILE_DIR
-    for filename in os.listdir(session_dir):
-        filepath = os.path.join(session_dir, filename)
-        try:
-            if os.path.getmtime(filepath) + (7 * 24 * 60 * 60) < now:  # 7 days
-                os.remove(filepath)
-        except OSError:
-            pass
-
 if __name__ == "__main__":
-    # Schedule session cleanup every hour
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(cleanup_old_sessions, 'interval', hours=1)
-    scheduler.start()
-
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
