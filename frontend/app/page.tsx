@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import CodeComparison from '../components/CodeComparison';
+import UserAvatar from '../components/UserAvatar';
 
 export default function Home() {
   const [prefix, setPrefix] = useState('');
@@ -10,27 +11,29 @@ export default function Home() {
     finetunedResponse: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [modelAIsBase, setModelAIsBase] = useState<boolean | null>(null);
+  const [preferredModel, setPreferredModel] = useState<'A' | 'B' | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5000/', {
+      const response = await fetch('http://localhost:5000/api/generate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
+        credentials: 'include',
         body: `prefix=${encodeURIComponent(prefix)}`,
       });
 
-      const data = await response.text();
-      const baseMatch = data.match(/<h2>Base Model<\/h2>\s*<code>.*?<font color='blue'>(.*?)<\/font>/s);
-      const finetunedMatch = data.match(/<h2>Finetuned Model<\/h2>\s*<code>.*?<font color='blue'>(.*?)<\/font>/s);
-
+      const data = await response.json();
+      setModelAIsBase(data.modelAIsBase);
       setResults({
-        baseResponse: baseMatch ? baseMatch[1] : '',
-        finetunedResponse: finetunedMatch ? finetunedMatch[1] : '',
+        baseResponse: data.modelAIsBase ? data.modelA : data.modelB,
+        finetunedResponse: data.modelAIsBase ? data.modelB : data.modelA,
       });
     } catch (error) {
       console.error('Error:', error);
@@ -39,14 +42,78 @@ export default function Home() {
     }
   };
 
+  const handlePreferenceSubmit = async () => {
+    if (!preferredModel || modelAIsBase === null) return;
+
+    const preferredModelType = (
+      (preferredModel === 'A' && modelAIsBase) ||
+      (preferredModel === 'B' && !modelAIsBase)
+    ) ? 'base' : 'finetuned';
+
+    try {
+      await fetch('http://localhost:5000/submit-preference', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          preferredModel: preferredModelType,
+          codePrefix: prefix,
+          modelAWasBase: modelAIsBase
+        }),
+      });
+      // Reset the form
+      setPrefix('');
+      setResults(null);
+      setPreferredModel(null);
+      setModelAIsBase(null);
+    } catch (error) {
+      console.error('Error submitting preference:', error);
+    }
+  };
+
+  const handleLogin = () => {
+    window.location.href = 'http://localhost:5000/auth/login';
+  };
+
+  // Only check user status once when component mounts
+  useEffect(() => {
+    fetch('http://localhost:5000/auth/user', {
+      credentials: 'include'
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.username) {
+        setUser(data);
+      }
+    })
+    .catch(console.error);
+  }, []);
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 flex items-center justify-center">
+        <button
+          onClick={handleLogin}
+          className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg
+                   hover:from-blue-600 hover:to-purple-700 transition-all duration-200 transform hover:scale-105"
+        >
+          Login with GitHub
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
       {/* Header */}
       <header className="border-b border-gray-700">
-        <div className="max-w-7xl mx-auto py-6 px-4">
+        <div className="max-w-7xl mx-auto py-6 px-4 flex justify-between items-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
             LLM Pepsi Challenge
           </h1>
+          <UserAvatar user={user} />
         </div>
       </header>
 
@@ -92,15 +159,58 @@ export default function Home() {
 
         {/* Results Section */}
         {results && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <CodeComparison
-              title="Base Model"
-              code={prefix + results.baseResponse}
-            />
-            <CodeComparison
-              title="Finetuned Model"
-              code={prefix + results.finetunedResponse}
-            />
+          <div className="space-y-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div>
+                <CodeComparison
+                  title="Model A"
+                  code={prefix + (modelAIsBase ? results.baseResponse : results.finetunedResponse)}
+                />
+                <div className="mt-4 flex items-center">
+                  <input
+                    type="radio"
+                    id="preferA"
+                    name="preference"
+                    value="A"
+                    checked={preferredModel === 'A'}
+                    onChange={() => setPreferredModel('A')}
+                    className="mr-2"
+                  />
+                  <label htmlFor="preferA">Preferred Output</label>
+                </div>
+              </div>
+              <div>
+                <CodeComparison
+                  title="Model B"
+                  code={prefix + (modelAIsBase ? results.finetunedResponse : results.baseResponse)}
+                />
+                <div className="mt-4 flex items-center">
+                  <input
+                    type="radio"
+                    id="preferB"
+                    name="preference"
+                    value="B"
+                    checked={preferredModel === 'B'}
+                    onChange={() => setPreferredModel('B')}
+                    className="mr-2"
+                  />
+                  <label htmlFor="preferB">Preferred Output</label>
+                </div>
+              </div>
+            </div>
+            
+            <div className="flex justify-center">
+              <button
+                onClick={handlePreferenceSubmit}
+                disabled={!preferredModel}
+                className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105
+                  ${preferredModel 
+                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
+                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+              >
+                Submit Preference
+              </button>
+            </div>
           </div>
         )}
       </main>

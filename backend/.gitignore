@@ -43,3 +43,12 @@ responses.yml
 
 # setuptools
 src/mockllm/_version.py
+
+# New additions
+*.db
+
+# Sessions
+sessions/
+
+# Comparisons
+comparisons.db

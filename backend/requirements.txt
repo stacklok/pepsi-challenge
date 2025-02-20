@@ -8,5 +8,11 @@ accelerate==1.4.0
 safetensors==0.5.2
 sentencepiece==0.2.0
 flask-cors==4.0.0
+Authlib==1.2.1
+SQLAlchemy==2.0.23
+python-dotenv==1.0.0
+requests==2.31.0
+Flask-Session==0.5.0
+APScheduler==3.10.4
 
 # Platform specific requirements are in requirements-cuda.txt and requirements-macos.txt
