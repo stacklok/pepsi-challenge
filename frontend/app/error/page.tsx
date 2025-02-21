@@ -18,9 +18,9 @@ function ErrorContent() {
           </h2>
           <p className="text-gray-600 mb-6">{message}</p>
         </div>
-        
+
         <div className="flex justify-center">
-          <Link 
+          <Link
             href="/"
             className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors"
           >
@@ -44,4 +44,4 @@ export default function ErrorPage() {
       <ErrorContent />
     </Suspense>
   );
-} 
+}

@@ -49,7 +49,7 @@ export default function Home() {
 
   const handlePreferenceSubmit = async () => {
     if (!preferredModel || modelAIsBase === null) return;
-    
+
     setSubmissionState('submitting');
 
     const preferredModelType = (
@@ -58,7 +58,7 @@ export default function Home() {
     ) ? 'base' : 'finetuned';
 
     try {
-      await fetch('/submit-preference', {
+      await fetch('/api/submit-preference', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -73,7 +73,7 @@ export default function Home() {
       });
 
       setSubmissionState('success');
-      
+
       // Reset form after 2 seconds
       setTimeout(() => {
         setPrefix('');
@@ -127,7 +127,7 @@ export default function Home() {
       <header className="border-b border-gray-700">
         <div className="max-w-7xl mx-auto py-6 px-4 flex justify-between items-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            LLM Pepsi Challenge
+          🥤 LLM Pepsi Challenge
           </h1>
           <UserAvatar user={user} />
         </div>
@@ -139,13 +139,13 @@ export default function Home() {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label htmlFor="code-input" className="block text-lg font-medium text-gray-200 mb-2">
-                Enter your code prefix
+                Enter your code snippet
               </label>
               <textarea
                 id="code-input"
                 value={prefix}
                 onChange={(e) => setPrefix(e.target.value)}
-                className="w-full h-48 p-4 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm text-gray-100 
+                className="w-full h-48 p-4 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm text-gray-100
                           focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
                 placeholder="def main():"
               />
@@ -154,8 +154,8 @@ export default function Home() {
               type="submit"
               disabled={isLoading}
               className="w-full sm:w-auto px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg
-                       hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 
-                       focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 
+                       hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2
+                       focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200
                        transform hover:scale-105"
             >
               {isLoading ? (
@@ -214,13 +214,13 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-center">
               <button
                 onClick={handlePreferenceSubmit}
                 disabled={!preferredModel}
                 className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105
-                  ${preferredModel 
+                  ${preferredModel
                     ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
                     : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
               >
@@ -247,4 +247,4 @@ export default function Home() {
       )}
     </div>
   );
-} 
+}
