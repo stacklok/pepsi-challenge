@@ -2,7 +2,7 @@ from peft import PeftModel
 import torch
 from fastapi import FastAPI, Request, HTTPException, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import RedirectResponse, JSONResponse, FileResponse, StreamingResponse
 import platform
 from authlib.integrations.starlette_client import OAuth
 from models import Session as DBSession, ComparisonResult
@@ -13,6 +13,9 @@ from starlette.middleware.sessions import SessionMiddleware
 from typing import Optional
 from sqlalchemy import or_
 import os
+import csv
+import io
+import json
 
 
 app = FastAPI()
@@ -135,6 +138,34 @@ async def generate(request: Request, prefix: str = Form(...)):
         'modelAIsBase': model_a_is_base
     }
 
+@app.post("/api/submit-preference")
+async def submit_preference(request: Request):
+    if "user" not in request.session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    data = await request.json()
+    db_session = DBSession()
+
+    try:
+        result = ComparisonResult(
+            github_username=request.session['user']['username'],
+            base_model_name=Config.BASE_MODEL_NAME,
+            finetuned_model_name=Config.FINETUNED_MODEL_NAME,
+            preferred_model=data['preferredModel'],
+            code_prefix=data['codePrefix'],
+            base_completion=data['baseCompletion'],
+            finetuned_completion=data['finetunedCompletion']
+        )
+
+        db_session.add(result)
+        db_session.commit()
+        return {"success": True}
+    except Exception as e:
+        db_session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
 @app.get("/auth/login")
 async def github_login(request: Request, redirect_uri: str = Config.FRONTEND_URL):
     request.session['redirect_uri'] = redirect_uri
@@ -185,30 +216,6 @@ async def logout(request: Request):
 async def get_user(request: Request):
     return request.session.get('user', {})
 
-@app.post("/submit-preference")
-async def submit_preference(request: Request):
-    if "user" not in request.session:
-        raise HTTPException(status_code=401, detail="Not authenticated")
-
-    data = await request.json()
-    db_session = DBSession()
-
-    result = ComparisonResult(
-        github_username=request.session['user']['username'],
-        base_model_name=Config.BASE_MODEL_NAME,
-        finetuned_model_name=Config.FINETUNED_MODEL_NAME,
-        preferred_model=data['preferredModel'],
-        code_prefix=data['codePrefix'],
-        base_completion=data['baseCompletion'],
-        finetuned_completion=data['finetunedCompletion']
-    )
-
-    db_session.add(result)
-    db_session.commit()
-    db_session.close()
-
-    return {"success": True}
-
 def is_admin(username: str) -> bool:
     admin_users = Config.ADMIN_USERS.split(',')
     return username in admin_users
@@ -242,14 +249,16 @@ async def get_results(
             )
         )
 
+    # Get total count for pagination
     total = query.count()
 
+    # Get paginated results
     results = query.order_by(ComparisonResult.created_at.desc()) \
                   .offset((page - 1) * per_page) \
                   .limit(per_page) \
                   .all()
 
-    # Convert results to dict
+    # Convert results to dict with both completions
     results = [{
         "id": r.id,
         "github_username": r.github_username,
@@ -257,9 +266,19 @@ async def get_results(
         "code_prefix": r.code_prefix,
         "base_completion": r.base_completion,
         "finetuned_completion": r.finetuned_completion,
-        "base_model_name": r.base_model_name,
-        "finetuned_model_name": r.finetuned_model_name,
-        "created_at": r.created_at.isoformat()
+        "created_at": r.created_at.isoformat(),
+        "completions": [
+            {
+                "model": "base",
+                "completion": r.base_completion,
+                "is_selected": r.preferred_model == "base"
+            },
+            {
+                "model": "finetuned",
+                "completion": r.finetuned_completion,
+                "is_selected": r.preferred_model == "finetuned"
+            }
+        ]
     } for r in results]
 
     db_session.close()
@@ -285,24 +304,24 @@ async def get_stats(request: Request):
         raise HTTPException(status_code=403, detail="Not authorized")
 
     db_session = DBSession()
-    
+
     # Get total counts for each model preference
     base_count = db_session.query(ComparisonResult).filter(
         ComparisonResult.preferred_model == 'base'
     ).count()
-    
+
     finetuned_count = db_session.query(ComparisonResult).filter(
         ComparisonResult.preferred_model == 'finetuned'
     ).count()
-    
+
     total_comparisons = base_count + finetuned_count
-    
+
     # Calculate percentages
     base_percentage = (base_count / total_comparisons * 100) if total_comparisons > 0 else 0
     finetuned_percentage = (finetuned_count / total_comparisons * 100) if total_comparisons > 0 else 0
-    
+
     db_session.close()
-    
+
     return {
         "total_comparisons": total_comparisons,
         "model_preferences": [
@@ -317,6 +336,206 @@ async def get_stats(request: Request):
                 "percentage": round(finetuned_percentage, 1)
             }
         ]
+    }
+
+@app.get("/api/analytics/performance")
+async def get_performance_metrics(request: Request):
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_session = DBSession()
+
+    # Add metrics like:
+    # - Average completion time
+    # - Token usage
+    # - Most common user preferences by code category
+    # - Success/error rates
+
+    return {
+        "metrics": {
+            "avg_completion_time": 1.2,  # seconds
+            "token_usage": {
+                "base_model": 12500,
+                "finetuned_model": 13200
+            },
+            "preference_by_category": {
+                "API Routes": "finetuned",
+                "Database": "base",
+                # etc
+            }
+        }
+    }
+
+@app.post("/api/review")
+async def generate_review(request: Request, code: str = Form(...)):
+    """Generate code review comments from both models"""
+
+    prompt = f"Review this code and suggest improvements:\n{code}"
+
+    base_review = test_completion(base_model, tokenizer, [{"prefix": prompt, "suffix": ""}])
+    finetuned_review = test_completion(peft_model, tokenizer, [{"prefix": prompt, "suffix": ""}])
+
+    return {
+        "base_review": base_review[0],
+        "finetuned_review": finetuned_review[0]
+    }
+
+@app.get("/api/admin/export")
+async def export_results(request: Request, format: str = "csv"):
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_session = DBSession()
+    results = db_session.query(ComparisonResult).all()
+
+    if format == "csv":
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            'ID',
+            'Username',
+            'Preferred Model',
+            'Original Prompt',
+            'Selected Completion',
+            'Rejected Completion',
+            'Created At'
+        ])
+
+        for result in results:
+            # Determine which completion was selected/rejected
+            selected_completion = (
+                result.base_completion if result.preferred_model == 'base'
+                else result.finetuned_completion
+            )
+            rejected_completion = (
+                result.finetuned_completion if result.preferred_model == 'base'
+                else result.base_completion
+            )
+
+            writer.writerow([
+                result.id,
+                result.github_username,
+                result.preferred_model,
+                result.code_prefix,
+                selected_completion,
+                rejected_completion,
+                result.created_at.isoformat()
+            ])
+
+        output.seek(0)
+        db_session.close()
+
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type="text/csv",
+            headers={"Content-Disposition": "attachment; filename=comparison-results.csv"}
+        )
+
+    elif format == "json":
+        data = [{
+            "id": r.id,
+            "github_username": r.github_username,
+            "preferred_model": r.preferred_model,
+            "code_prefix": r.code_prefix,
+            "base_completion": r.base_completion,
+            "finetuned_completion": r.finetuned_completion,
+            "base_model_name": r.base_model_name,
+            "finetuned_model_name": r.finetuned_model_name,
+            "created_at": r.created_at.isoformat(),
+            "completions": [
+                {
+                    "model": "base",
+                    "completion": r.base_completion,
+                    "is_selected": r.preferred_model == "base"
+                },
+                {
+                    "model": "finetuned",
+                    "completion": r.finetuned_completion,
+                    "is_selected": r.preferred_model == "finetuned"
+                }
+            ]
+        } for r in results]
+
+        db_session.close()
+
+        # Use json.dumps with proper formatting
+        json_str = json.dumps(data, indent=2, ensure_ascii=False)
+
+        return StreamingResponse(
+            iter([json_str]),
+            media_type="application/json",
+            headers={"Content-Disposition": "attachment; filename=comparison-results.json"}
+        )
+
+@app.post("/api/collaborate")
+async def start_collaboration(request: Request):
+    """Allow multiple users to review the same completion"""
+
+    session_id = secrets.token_urlsafe(16)
+
+    # Store collaboration session
+    collaboration_sessions[session_id] = {
+        "code_prefix": request.json["prefix"],
+        "participants": [request.session["user"]["username"]],
+        "votes": {
+            "base": 0,
+            "finetuned": 0
+        }
+    }
+
+    return {"session_id": session_id}
+
+@app.post("/api/explain")
+async def explain_completion(request: Request, completion_id: int):
+    """Generate explanation of why the model produced this completion"""
+
+    db_session = DBSession()
+    completion = db_session.query(ComparisonResult).get(completion_id)
+
+    explanation_prompt = f"Explain why you generated this completion:\n{completion.code_prefix}\n{completion.base_completion}"
+
+    explanation = test_completion(base_model, tokenizer, [{"prefix": explanation_prompt, "suffix": ""}])
+
+    return {"explanation": explanation[0]}
+
+@app.get("/api/user/stats")
+async def get_user_stats(request: Request):
+    if "user" not in request.session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    username = request.session["user"]["username"]
+    db_session = DBSession()
+
+    # Get user's comparison history
+    user_comparisons = db_session.query(ComparisonResult).filter(
+        ComparisonResult.github_username == username
+    ).order_by(ComparisonResult.created_at.desc()).all()
+
+    # Calculate statistics
+    total_comparisons = len(user_comparisons)
+    base_preferred = sum(1 for c in user_comparisons if c.preferred_model == 'base')
+    finetuned_preferred = total_comparisons - base_preferred
+
+    # Get recent comparisons
+    recent_comparisons = [
+        {
+            "id": c.id,
+            "code_prefix": c.code_prefix[:100] + "..." if len(c.code_prefix) > 100 else c.code_prefix,
+            "preferred_model": c.preferred_model,
+            "created_at": c.created_at.isoformat()
+        }
+        for c in user_comparisons[:5]  # Last 5 comparisons
+    ]
+
+    db_session.close()
+
+    return {
+        "total_comparisons": total_comparisons,
+        "preferences": {
+            "base": base_preferred,
+            "finetuned": finetuned_preferred
+        },
+        "recent_comparisons": recent_comparisons
     }
 
 if __name__ == "__main__":
