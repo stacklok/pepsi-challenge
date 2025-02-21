@@ -27,13 +27,37 @@ interface PaginatedResults {
   total_pages: number;
 }
 
+interface ModelStats {
+  total_comparisons: number;
+  model_preferences: {
+    model: string;
+    count: number;
+    percentage: number;
+  }[];
+}
+
 export default function AdminPanel() {
   const router = useRouter();
   const [results, setResults] = useState<PaginatedResults | null>(null);
+  const [stats, setStats] = useState<ModelStats | null>(null);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/admin/stats', { credentials: 'include' });
+      if (response.status === 403) {
+        router.push('/');
+        return;
+      }
+      const data = await response.json();
+      setStats(data);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
   const fetchResults = async (pageNum: number, searchTerm: string) => {
     try {
@@ -56,6 +80,7 @@ export default function AdminPanel() {
 
   useEffect(() => {
     fetchResults(page, search);
+    fetchStats();
   }, [page]);
 
   // Debounced search
@@ -78,7 +103,7 @@ export default function AdminPanel() {
     };
   }, [search]);
 
-  if (!results) return <div className="text-white">Loading...</div>;
+  if (!results || !stats) return <div className="text-white">Loading...</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white p-4">
@@ -88,6 +113,28 @@ export default function AdminPanel() {
           <Link href="/" className="text-blue-400 hover:text-blue-300">
             Return Home
           </Link>
+        </div>
+
+        {/* Stats Section */}
+        <div className="mb-8 bg-gray-800 rounded-lg p-6 border border-gray-700">
+          <h2 className="text-xl font-semibold mb-4">Model Preference Statistics</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {stats.model_preferences.map((pref) => (
+              <div 
+                key={pref.model}
+                className="bg-gray-700 rounded-lg p-4 flex flex-col items-center"
+              >
+                <h3 className="text-lg font-medium mb-2">
+                  {pref.model === 'base' ? 'Base Model' : 'Fine-tuned Model'}
+                </h3>
+                <div className="text-3xl font-bold mb-1">{pref.percentage}%</div>
+                <div className="text-gray-400">({pref.count} votes)</div>
+              </div>
+            ))}
+          </div>
+          <div className="text-center mt-4 text-gray-400">
+            Total Comparisons: {stats.total_comparisons}
+          </div>
         </div>
 
         <div className="mb-6">
