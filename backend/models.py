@@ -18,6 +18,27 @@ class ComparisonResult(Base):
     finetuned_completion = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    @classmethod
+    def get_preference_stats(cls, session):
+        """Get statistics about model preferences"""
+        base_count = session.query(cls).filter(
+            cls.preferred_model == 'base'
+        ).count()
+        
+        finetuned_count = session.query(cls).filter(
+            cls.preferred_model == 'finetuned'
+        ).count()
+        
+        total = base_count + finetuned_count
+        
+        return {
+            "total": total,
+            "base_count": base_count,
+            "finetuned_count": finetuned_count,
+            "base_percentage": (base_count / total * 100) if total > 0 else 0,
+            "finetuned_percentage": (finetuned_count / total * 100) if total > 0 else 0
+        }
+
 # Create database and tables
 engine = create_engine('sqlite:///comparisons.db')
 Base.metadata.create_all(engine)

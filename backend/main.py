@@ -279,6 +279,46 @@ async def auth_error(request: Request, type: str = None, message: str = None):
         "message": message or "An authentication error occurred"
     })
 
+@app.get("/api/admin/stats")
+async def get_stats(request: Request):
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_session = DBSession()
+    
+    # Get total counts for each model preference
+    base_count = db_session.query(ComparisonResult).filter(
+        ComparisonResult.preferred_model == 'base'
+    ).count()
+    
+    finetuned_count = db_session.query(ComparisonResult).filter(
+        ComparisonResult.preferred_model == 'finetuned'
+    ).count()
+    
+    total_comparisons = base_count + finetuned_count
+    
+    # Calculate percentages
+    base_percentage = (base_count / total_comparisons * 100) if total_comparisons > 0 else 0
+    finetuned_percentage = (finetuned_count / total_comparisons * 100) if total_comparisons > 0 else 0
+    
+    db_session.close()
+    
+    return {
+        "total_comparisons": total_comparisons,
+        "model_preferences": [
+            {
+                "model": "base",
+                "count": base_count,
+                "percentage": round(base_percentage, 1)
+            },
+            {
+                "model": "finetuned",
+                "count": finetuned_count,
+                "percentage": round(finetuned_percentage, 1)
+            }
+        ]
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
