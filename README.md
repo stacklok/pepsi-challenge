@@ -55,16 +55,31 @@ pip install fastapi uvicorn python-multipart authlib starlette
 
 ### Production Deployment
 
-The application is designed to run behind a reverse proxy (like Nginx) with the following architecture:
+#### 1. Environment Configuration
 
+Create a `.env` file in the `backend` directory:
+```env
+SESSION_SECRET_KEY=your-secret-key-here
+GITHUB_CLIENT_ID=your-github-client-id
+GITHUB_CLIENT_SECRET=your-github-client-secret
+GITHUB_CALLBACK_URL=https://your-domain.com/auth/callback
+
+# Model Configuration
+BASE_MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
+FINETUNED_MODEL_NAME=stacklok/Qwen2.5-Coder-0.5B-codegate
+FRONTEND_URL=https://your-domain.com
+
+# Admin Configuration
+ADMIN_USERS=admin1,admin2
+
+# Development Configuration
+WATCHFILES_FORCE_POLLING=false
+WATCHFILES_IGNORE_PATHS=*/unsloth_compiled_cache/*
 ```
-Internet -> Nginx (443) -> Frontend (3000)
-                       -> Backend (5000)
-```
 
-#### Nginx Configuration
+#### 2. Nginx Configuration
 
-Create a configuration file for your domain:
+Create a new Nginx configuration file (e.g., `/etc/nginx/sites-available/pepsi-challenge`):
 
 ```nginx
 server {
@@ -75,7 +90,7 @@ server {
     ssl_certificate /path/to/cert.pem;
     ssl_certificate_key /path/to/key.pem;
 
-    # Frontend
+    # Frontend routes
     location / {
         proxy_pass http://127.0.0.1:3000;
         proxy_http_version 1.1;
@@ -85,7 +100,7 @@ server {
         proxy_cache_bypass $http_upgrade;
     }
 
-    # Backend API routes
+    # Backend API and auth routes
     location ~ ^/(api|auth|submit-preference) {
         proxy_pass http://127.0.0.1:5000;
         proxy_http_version 1.1;
@@ -95,33 +110,25 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_redirect off;
     }
 }
 ```
 
-#### Environment Configuration
+Enable the configuration:
+```bash
+ln -s /etc/nginx/sites-available/pepsi-challenge /etc/nginx/sites-enabled/
+nginx -t  # Test the configuration
+systemctl reload nginx  # Apply the configuration
+```
+
+#### 3. GitHub OAuth Setup
 
 1. Create a GitHub OAuth application at https://github.com/settings/developers
    - Set Homepage URL to `https://your-domain.com`
    - Set Authorization callback URL to `https://your-domain.com/auth/callback`
 
-2. Update the `.env` file in the `backend` directory:
-   ```env
-   SESSION_SECRET_KEY=your-secret-key-here
-   GITHUB_CLIENT_ID=your-github-client-id
-   GITHUB_CLIENT_SECRET=your-github-client-secret
-   GITHUB_CALLBACK_URL=https://your-domain.com/auth/callback
-   
-   # Model Configuration
-   BASE_MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
-   FINETUNED_MODEL_NAME=stacklok/Qwen2.5-Coder-0.5B-codegate
-   FRONTEND_URL=https://your-domain.com
-   
-   # Admin Configuration
-   ADMIN_USERS=admin1,admin2
-   ```
-
-#### Running in Production
+#### 4. Running Services
 
 1. Backend:
 ```bash
@@ -136,7 +143,13 @@ npm run build
 npm run start
 ```
 
-Consider using process managers like PM2 or systemd to manage these services.
+Consider using process managers like PM2 or systemd to manage these services:
+
+```bash
+# Using PM2
+pm2 start "cd backend && uvicorn main:app --host 127.0.0.1 --port 5000" --name pepsi-backend
+pm2 start "cd frontend && npm run start" --name pepsi-frontend
+```
 
 ## Server Setup
 
