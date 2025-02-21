@@ -12,6 +12,7 @@ import secrets
 from starlette.middleware.sessions import SessionMiddleware
 from typing import Optional
 from sqlalchemy import or_
+import os
 
 app = FastAPI()
 
@@ -140,12 +141,22 @@ async def github_login(request: Request, redirect_uri: str = Config.FRONTEND_URL
         request, request.url_for('github_callback')
     )
 
+def is_allowed_user(username: str) -> bool:
+    allowed_users = os.getenv('ALLOWED_USERS', '').split(',')
+    return username in allowed_users
+
 @app.get("/auth/callback")
 async def github_callback(request: Request):
     try:
         token = await oauth.github.authorize_access_token(request)
         resp = await oauth.github.get('user', token=token)
         user_info = resp.json()
+        
+        # Check if user is allowed
+        if not is_allowed_user(user_info['login']):
+            return RedirectResponse(
+                url=f"{Config.FRONTEND_URL}/auth/error?message=Sorry, limited access only"
+            )
 
         # Store user info in session
         request.session['user'] = {
