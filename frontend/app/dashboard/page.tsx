@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Doughnut } from 'react-chartjs-2';
 import { formatDistanceToNow } from 'date-fns';
+import { endpoints } from '@/config/api';
 
 interface UserStats {
   total_comparisons: number;
@@ -28,15 +29,15 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/user/stats', {
+        const response = await fetch(endpoints.user_stats, {
           credentials: 'include'
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setUserStats(data);
         } else if (response.status === 401) {
-          router.push('/auth/login');
+          router.push(endpoints.login);
         }
       } catch (error) {
         console.error('Error fetching user stats:', error);
@@ -68,7 +69,7 @@ export default function Dashboard() {
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Your Dashboard</h1>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Total Comparisons Card */}
         <Card className="p-6">
@@ -82,7 +83,7 @@ export default function Dashboard() {
         <Card className="p-6 col-span-2">
           <h2 className="text-lg font-semibold mb-4">Your Model Preferences</h2>
           <div className="h-64">
-            <Doughnut 
+            <Doughnut
               data={chartData}
               options={{
                 responsive: true,
@@ -97,7 +98,7 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
           <div className="space-y-4">
             {userStats.recent_comparisons.map((comparison) => (
-              <div 
+              <div
                 key={comparison.id}
                 className="border-b pb-4 last:border-0"
               >
@@ -123,4 +124,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-} 
+}

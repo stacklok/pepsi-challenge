@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
+import { endpoints } from '@/config/api';
+
 
 type UserAvatarProps = {
   user: {
@@ -17,7 +19,7 @@ export default function UserAvatar({ user }: UserAvatarProps) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const handleLogout = () => {
-    fetch('/auth/logout', {
+    fetch(endpoints.logout, {
       credentials: 'include'
     })
     .then(() => {
@@ -28,7 +30,7 @@ export default function UserAvatar({ user }: UserAvatarProps) {
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const response = await fetch('/auth/is_admin', {
+      const response = await fetch(endpoints.is_admin, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -41,7 +43,7 @@ export default function UserAvatar({ user }: UserAvatarProps) {
 
   if (!user) {
     return (
-      <a href="/auth/login" 
+      <a href={endpoints.login}
          className="px-4 py-2 bg-gray-800 rounded-lg text-white hover:bg-gray-700">
         Login with GitHub
       </a>
@@ -65,7 +67,7 @@ export default function UserAvatar({ user }: UserAvatarProps) {
           />
         </div>
       </div>
-      <div className="absolute right-0 top-[calc(100%-8px)] w-48 bg-gray-800 rounded-lg shadow-xl opacity-0 invisible 
+      <div className="absolute right-0 top-[calc(100%-8px)] w-48 bg-gray-800 rounded-lg shadow-xl opacity-0 invisible
                       group-hover:opacity-100 group-hover:visible transition-all duration-200">
         <div className="px-4 py-2 border-b border-gray-700">
           <p className="text-sm text-gray-300">{user.username}</p>
@@ -84,4 +86,4 @@ export default function UserAvatar({ user }: UserAvatarProps) {
       </div>
     </div>
   );
-} 
+}

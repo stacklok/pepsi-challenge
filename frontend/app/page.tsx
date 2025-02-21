@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import CodeComparison from '../components/CodeComparison';
 import UserAvatar from '../components/UserAvatar';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import { endpoints } from '@/config/api';
 
 type SubmissionState = 'idle' | 'submitting' | 'success';
 
@@ -25,7 +26,7 @@ export default function Home() {
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/generate', {
+      const response = await fetch(endpoints.generate, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -58,7 +59,7 @@ export default function Home() {
     ) ? 'base' : 'finetuned';
 
     try {
-      await fetch('/api/submit-preference', {
+      await fetch(endpoints.submit_perference, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -90,12 +91,12 @@ export default function Home() {
   };
 
   const handleLogin = () => {
-    window.location.href = '/auth/login';
+    window.location.href = endpoints.login;
   };
 
   // Only check user status once when component mounts
   useEffect(() => {
-    fetch('/auth/user', {
+    fetch(endpoints.user, {
       credentials: 'include'
     })
     .then(res => res.json())

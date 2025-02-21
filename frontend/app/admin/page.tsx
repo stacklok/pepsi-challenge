@@ -16,6 +16,7 @@ import {
 } from 'chart.js';
 import { Highlight, themes } from 'prism-react-renderer';
 import Link from 'next/link';
+import { endpoints } from '@/config/api';
 
 // Register ChartJS components
 ChartJS.register(
@@ -71,7 +72,7 @@ export default function AdminPanel() {
 
   const checkAdmin = async () => {
     try {
-      const response = await fetch('/auth/is_admin', {
+      const response = await fetch(endpoints.is_admin, {
         credentials: 'include'
       });
       const data = await response.json();
@@ -87,7 +88,7 @@ export default function AdminPanel() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch('/api/admin/stats', {
+      const response = await fetch(endpoints.admin_stats, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -103,22 +104,22 @@ export default function AdminPanel() {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/admin/results?page=${page}&per_page=10&search=${encodeURIComponent(search)}`,
-        { 
+        `${endpoints.admin_results}?page=${page}&per_page=10&search=${encodeURIComponent(search)}`,
+        {
           credentials: 'include',
           headers: {
             'Accept': 'application/json',
           }
         }
       );
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
       console.log('Fetched results:', data); // For debugging
-      
+
       setResults(data.results);
       setTotalPages(data.total_pages);
     } catch (error) {
@@ -132,7 +133,7 @@ export default function AdminPanel() {
 
   const exportData = async () => {
     try {
-      const response = await fetch('/api/admin/export?format=csv', {
+      const response = await fetch(`${endpoints.admin_export}?format=csv`, {
         credentials: 'include'
       });
       if (response.ok) {
@@ -151,8 +152,8 @@ export default function AdminPanel() {
   const renderCodeWithHighlight = (code: string, language = 'python') => (
     <Highlight theme={themes.nightOwl} code={code} language={language}>
       {({ className, style, tokens, getLineProps, getTokenProps }) => (
-        <pre 
-          className={`${className} p-4 rounded overflow-x-auto border-2 border-gray-700`} 
+        <pre
+          className={`${className} p-4 rounded overflow-x-auto border-2 border-gray-700`}
           style={style}
         >
           {tokens.map((line, i) => (
@@ -185,7 +186,7 @@ export default function AdminPanel() {
       <div className="flex justify-between items-center mb-6 relative z-50">
         <div className="flex items-center gap-4">
           <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <Link 
+          <Link
             href="/"
             className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors relative"
           >
@@ -211,12 +212,12 @@ export default function AdminPanel() {
               Total Comparisons: {stats?.total_comparisons || 0}
             </p>
             {stats?.model_preferences.map((pref) => (
-              <p 
-                key={pref.model} 
+              <p
+                key={pref.model}
                 className={`font-bold ${
-                  pref.model === 'finetuned' && pref.percentage > 50 
-                    ? 'text-green-400' 
-                    : pref.model === 'base' && pref.percentage > 50 
+                  pref.model === 'finetuned' && pref.percentage > 50
+                    ? 'text-green-400'
+                    : pref.model === 'base' && pref.percentage > 50
                       ? 'text-green-400'
                       : 'text-red-400'
                 }`}
@@ -274,16 +275,16 @@ export default function AdminPanel() {
               <tbody>
                 {results.map((result) => (
                   <>
-                    <tr 
-                      key={result.id} 
+                    <tr
+                      key={result.id}
                       className="border-b border-gray-700 cursor-pointer transition-colors"
                       onClick={() => setExpandedRow(expandedRow === result.id ? null : result.id)}
                     >
                       <td className="p-2">{result.github_username}</td>
                       <td className="p-2">
                         <span className={`px-2 py-1 rounded text-sm ${
-                          result.preferred_model === 'base' 
-                            ? 'bg-indigo-100 text-indigo-800' 
+                          result.preferred_model === 'base'
+                            ? 'bg-indigo-100 text-indigo-800'
                             : 'bg-green-100 text-green-800'
                         }`}>
                           {result.preferred_model === 'base' ? 'Base' : 'Finetuned'}
@@ -312,7 +313,7 @@ export default function AdminPanel() {
                               <h3 className="font-semibold mb-2 text-white">Original Prompt</h3>
                               {renderCodeWithHighlight(result.code_prefix)}
                             </div>
-                            
+
                             <div>
                               <h3 className="font-semibold mb-2 text-white">
                                 <span className={result.preferred_model === 'base' ? 'text-green-400' : 'text-red-400'}>
@@ -375,4 +376,4 @@ export default function AdminPanel() {
       </Card>
     </div>
   );
-} 
+}
