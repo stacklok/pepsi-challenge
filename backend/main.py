@@ -538,6 +538,91 @@ async def get_user_stats(request: Request):
         "recent_comparisons": recent_comparisons
     }
 
+@app.get("/api/admin/analytics")
+async def get_analytics(request: Request):
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+        
+    db_session = DBSession()
+    
+    # Get all results ordered by date
+    results = db_session.query(ComparisonResult).order_by(ComparisonResult.created_at).all()
+    
+    # Calculate daily statistics
+    daily_stats = {}
+    user_stats = {}
+    total_users = set()
+    
+    for result in results:
+        date = result.created_at.date().isoformat()
+        total_users.add(result.github_username)
+        
+        # Initialize daily stats
+        if date not in daily_stats:
+            daily_stats[date] = {
+                "total": 0,
+                "base_preferred": 0,
+                "finetuned_preferred": 0,
+                "unique_users": set()
+            }
+            
+        daily_stats[date]["total"] += 1
+        daily_stats[date]["unique_users"].add(result.github_username)
+        if result.preferred_model == "base":
+            daily_stats[date]["base_preferred"] += 1
+        else:
+            daily_stats[date]["finetuned_preferred"] += 1
+            
+        # Track user preferences
+        if result.github_username not in user_stats:
+            user_stats[result.github_username] = {
+                "total": 0,
+                "base_preferred": 0,
+                "finetuned_preferred": 0
+            }
+        user_stats[result.github_username]["total"] += 1
+        if result.preferred_model == "base":
+            user_stats[result.github_username]["base_preferred"] += 1
+        else:
+            user_stats[result.github_username]["finetuned_preferred"] += 1
+    
+    # Format daily stats for the response
+    daily_data = [{
+        "date": date,
+        "total_comparisons": stats["total"],
+        "base_preferred": stats["base_preferred"],
+        "finetuned_preferred": stats["finetuned_preferred"],
+        "unique_users": len(stats["unique_users"])
+    } for date, stats in daily_stats.items()]
+    
+    # Calculate user engagement metrics
+    user_engagement = {
+        "total_users": len(total_users),
+        "avg_comparisons_per_user": sum(u["total"] for u in user_stats.values()) / len(total_users) if total_users else 0,
+        "most_active_users": sorted(
+            [{"username": u, "total": s["total"]} for u, s in user_stats.items()],
+            key=lambda x: x["total"],
+            reverse=True
+        )[:5]
+    }
+    
+    db_session.close()
+    
+    return {
+        "daily_stats": daily_data,
+        "user_engagement": user_engagement,
+        "model_performance": {
+            "base_model": {
+                "total_preferred": sum(1 for r in results if r.preferred_model == "base"),
+                "percentage": sum(1 for r in results if r.preferred_model == "base") / len(results) * 100 if results else 0
+            },
+            "finetuned_model": {
+                "total_preferred": sum(1 for r in results if r.preferred_model == "finetuned"),
+                "percentage": sum(1 for r in results if r.preferred_model == "finetuned") / len(results) * 100 if results else 0
+            }
+        }
+    }
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

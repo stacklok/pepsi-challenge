@@ -7,8 +7,8 @@ import { Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
   ArcElement,
-  Tooltip,
-  Legend,
+  Tooltip as ChartTooltip,
+  Legend as ChartLegend,
   CategoryScale,
   LinearScale,
   PointElement,
@@ -16,12 +16,13 @@ import {
 } from 'chart.js';
 import { Highlight, themes } from 'prism-react-renderer';
 import Link from 'next/link';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
 // Register ChartJS components
 ChartJS.register(
   ArcElement,
-  Tooltip,
-  Legend,
+  ChartTooltip,
+  ChartLegend,
   CategoryScale,
   LinearScale,
   PointElement,
@@ -52,6 +53,34 @@ interface Stats {
   }>;
 }
 
+interface Analytics {
+  daily_stats: Array<{
+    date: string;
+    total_comparisons: number;
+    base_preferred: number;
+    finetuned_preferred: number;
+    unique_users: number;
+  }>;
+  user_engagement: {
+    total_users: number;
+    avg_comparisons_per_user: number;
+    most_active_users: Array<{
+      username: string;
+      total: number;
+    }>;
+  };
+  model_performance: {
+    base_model: {
+      total_preferred: number;
+      percentage: number;
+    };
+    finetuned_model: {
+      total_preferred: number;
+      percentage: number;
+    };
+  };
+}
+
 export default function AdminPanel() {
   const router = useRouter();
   const [stats, setStats] = useState<Stats | null>(null);
@@ -62,11 +91,13 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
 
   useEffect(() => {
     checkAdmin();
     fetchStats();
     fetchResults();
+    fetchAnalytics();
   }, [page, search]);
 
   const checkAdmin = async () => {
@@ -127,6 +158,20 @@ export default function AdminPanel() {
       setTotalPages(1);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAnalytics = async () => {
+    try {
+      const response = await fetch('/api/admin/analytics', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setAnalytics(data);
+      }
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
     }
   };
 
@@ -240,6 +285,50 @@ export default function AdminPanel() {
                 }}
               />
             )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">Daily Comparisons</h2>
+          <div className="h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={analytics?.daily_stats || []}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="date" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="total_comparisons" stroke="#8884d8" name="Total Comparisons" />
+                <Line type="monotone" dataKey="unique_users" stroke="#82ca9d" name="Unique Users" />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-lg font-semibold mb-4">User Engagement</h2>
+          <div className="space-y-4">
+            <div>
+              <p className="text-sm text-gray-500">Total Users</p>
+              <p className="text-2xl font-bold">{analytics?.user_engagement.total_users}</p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Average Comparisons per User</p>
+              <p className="text-2xl font-bold">
+                {analytics?.user_engagement.avg_comparisons_per_user.toFixed(1)}
+              </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500 mb-2">Most Active Users</p>
+              {analytics?.user_engagement.most_active_users.map((user, index) => (
+                <div key={user.username} className="flex justify-between items-center py-1">
+                  <span>{user.username}</span>
+                  <span className="font-medium">{user.total} comparisons</span>
+                </div>
+              ))}
+            </div>
           </div>
         </Card>
       </div>
