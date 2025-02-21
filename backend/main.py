@@ -2,7 +2,7 @@ from peft import PeftModel
 import torch
 from fastapi import FastAPI, Request, HTTPException, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 import platform
 from authlib.integrations.starlette_client import OAuth
 from models import Session as DBSession, ComparisonResult
@@ -12,6 +12,8 @@ import secrets
 from starlette.middleware.sessions import SessionMiddleware
 from typing import Optional
 from sqlalchemy import or_
+import os
+
 
 app = FastAPI()
 
@@ -140,6 +142,10 @@ async def github_login(request: Request, redirect_uri: str = Config.FRONTEND_URL
         request, request.url_for('github_callback')
     )
 
+def is_allowed_user(username: str) -> bool:
+    allowed_users = os.getenv('ALLOWED_USERS', '').strip().split(',')
+    return username.strip() in [u.strip() for u in allowed_users if u]
+
 @app.get("/auth/callback")
 async def github_callback(request: Request):
     try:
@@ -147,19 +153,28 @@ async def github_callback(request: Request):
         resp = await oauth.github.get('user', token=token)
         user_info = resp.json()
 
+        username = user_info['login']
+
+        # Check if user is allowed
+        if not is_allowed_user(username):
+            return RedirectResponse(
+                url=f"{Config.FRONTEND_URL}/error?type=access_denied&message=Sorry, this is a limited access preview. Your GitHub username ({username}) is not on the allowed users list."
+            )
+
         # Store user info in session
         request.session['user'] = {
-            'username': user_info['login'],
+            'username': username,
             'avatar_url': user_info['avatar_url']
         }
 
         redirect_uri = request.session.pop('redirect_uri', Config.FRONTEND_URL)
-        response = RedirectResponse(url=redirect_uri)
-        return response
+        return RedirectResponse(url=redirect_uri)
 
     except Exception as e:
         print(f"Auth error: {e}")  # Log the error
-        return RedirectResponse(url=f"{Config.FRONTEND_URL}/auth/error")
+        return RedirectResponse(
+            url=f"{Config.FRONTEND_URL}/error?type=authentication_error&message=An authentication error occurred"
+        )
 
 @app.get("/auth/logout")
 async def logout(request: Request):
@@ -213,11 +228,10 @@ async def get_results(
 ):
     if "user" not in request.session or not is_admin(request.session["user"]["username"]):
         raise HTTPException(status_code=403, detail="Not authorized")
-    
+
     db_session = DBSession()
     query = db_session.query(ComparisonResult)
-    
-    # Apply search if provided
+
     if search:
         search = f"%{search}%"
         query = query.filter(
@@ -227,16 +241,14 @@ async def get_results(
                 ComparisonResult.preferred_model.ilike(search)
             )
         )
-    
-    # Get total count for pagination
+
     total = query.count()
-    
-    # Apply pagination
+
     results = query.order_by(ComparisonResult.created_at.desc()) \
                   .offset((page - 1) * per_page) \
                   .limit(per_page) \
                   .all()
-    
+
     # Convert results to dict
     results = [{
         "id": r.id,
@@ -249,9 +261,9 @@ async def get_results(
         "finetuned_model_name": r.finetuned_model_name,
         "created_at": r.created_at.isoformat()
     } for r in results]
-    
+
     db_session.close()
-    
+
     return {
         "results": results,
         "total": total,
@@ -259,6 +271,13 @@ async def get_results(
         "per_page": per_page,
         "total_pages": (total + per_page - 1) // per_page
     }
+
+@app.get("/auth/error")
+async def auth_error(request: Request, type: str = None, message: str = None):
+    return JSONResponse({
+        "error": type or "authentication_error",
+        "message": message or "An authentication error occurred"
+    })
 
 if __name__ == "__main__":
     import uvicorn

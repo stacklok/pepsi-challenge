@@ -31,5 +31,8 @@ class Config:
     # Admin users
     ADMIN_USERS = os.getenv('ADMIN_USERS', '').strip()
 
-    # Update callback URL to use domain
-    GITHUB_CALLBACK_URL = os.getenv('GITHUB_CALLBACK_URL', 'https://acme.com/auth/callback')
+    # Get the base URL for the backend
+    BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:5000')
+    
+    # Update callback URL to be environment-aware
+    GITHUB_CALLBACK_URL = os.getenv('GITHUB_CALLBACK_URL', f"{BACKEND_URL}/auth/callback")

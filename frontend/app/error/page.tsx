@@ -3,7 +3,7 @@
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 
-export default function AuthError() {
+export default function ErrorPage() {
   const searchParams = useSearchParams();
   const message = searchParams.get('message') || 'An authentication error occurred';
   const type = searchParams.get('type');
