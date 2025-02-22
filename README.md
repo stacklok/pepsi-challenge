@@ -4,62 +4,56 @@
   <img src="assets/pepsi-logo.png" alt="Pepsi Taste Logo" width="400"/>
 </p>
 
-## Introduction
+## Overview
 
-### Supported Platforms
+Pepsi-Challenge is a server application for testing and validating Stacklok fine-tuned models. It provides support for both NVIDIA GPUs (CUDA) and Apple Silicon (Metal) platforms.
 
-This repository contains the server code for testing and validating Stacklok 
-fine-tuned models. It supports both NVIDIA GPUs (CUDA) and Apple Silicon (Metal)
-platforms, so a local dev environment can be setup.
+### Hardware Support
 
-### GPU Support
+- **NVIDIA GPUs**: CUDA 12.1
+- **Apple Silicon**: Metal Performance Shaders (MPS)
 
-- NVIDIA GPUs: CUDA 12.1
-- Apple Silicon: Metal Performance Shaders (MPS)
+## Getting Started
 
-## Deployment
+### Prerequisites
 
-### Development Setup
+- Python 3.12
+- Node.js (for frontend)
+- NVIDIA GPU with CUDA 12.1 or Apple Silicon device
 
-First, clone the repository:
+### Installation
+
+1. **Clone the repository**:
 ```bash
 git clone https://github.com/stacklok/pepsi-challenge.git
-cd pepsi-challenge/
-cd backend/
+cd pepsi-challenge
+```
 
-# Create a Python 3.12 virtual environment
+2. **Set up the backend**:
+```bash
+cd backend
+
+# Create and activate Python virtual environment
 python3.12 -m venv venv
-
-# Activate the virtual environment
-source venv/bin/activate  # On Unix/macOS
+source venv/bin/activate  # Unix/macOS
 # or
-.\venv\Scripts\activate  # On Windows
-```
+.\venv\Scripts\activate  # Windows
 
-Then install requirements based on your platform:
-
-For MacOS:
-```bash
+# Install dependencies based on platform
+# For MacOS:
 pip install -r requirements-macos.txt
-```
-
-For CUDA systems:
-```bash
+# For CUDA systems:
 pip install -r requirements-cuda.txt
 ```
 
-Additionally, install FastAPI dependencies:
-```bash
-pip install fastapi uvicorn python-multipart authlib starlette
-```
+### Configuration
 
-### Production Deployment
-
-#### 1. Environment Configuration
-
-Create a `.env` file in the `backend` directory:
+1. **Backend Environment Setup** (`backend/.env`):
 ```env
+# Security
 SESSION_SECRET_KEY=your-secret-key-here
+
+# GitHub OAuth
 GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
 GITHUB_CALLBACK_URL=https://your-domain.com/auth/callback
@@ -69,89 +63,97 @@ BASE_MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
 FINETUNED_MODEL_NAME=stacklok/Qwen2.5-Coder-0.5B-codegate
 FRONTEND_URL=https://your-domain.com
 
-# Admin Configuration
+# Access Control
+ALLOWED_USERS=admin1,admin2
 ADMIN_USERS=admin1,admin2
 
-# Development Configuration
+# Development Settings
 WATCHFILES_FORCE_POLLING=false
 WATCHFILES_IGNORE_PATHS=*/unsloth_compiled_cache/*
 ```
 
-#### 2. Nginx Configuration
-
-Create a new Nginx configuration file (e.g., `/etc/nginx/sites-available/pepsi-challenge`):
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name your-domain.com;
-
-    # SSL configuration
-    ssl_certificate /path/to/cert.pem;
-    ssl_certificate_key /path/to/key.pem;
-
-    # Frontend routes
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-    }
-
-    # Backend API and auth routes
-    location ~ ^/(api|auth|submit-preference) {
-        proxy_pass http://127.0.0.1:5000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_redirect off;
-    }
-}
+2. **Frontend Environment Setup** (`frontend/.env`):
+```env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5000
 ```
 
-Enable the configuration:
+### GitHub OAuth Setup
+
+1. Create a new OAuth application at https://github.com/settings/developers
+2. Configure the application:
+   - Homepage URL: `https://your-domain.com`
+   - Authorization callback URL: `https://your-domain.com/auth/callback`
+3. Copy the client ID and secret to your backend `.env` file
+
+## Running the Application
+
+### Local Development
+
+1. **Start the Backend in Development Mode**:
 ```bash
-ln -s /etc/nginx/sites-available/pepsi-challenge /etc/nginx/sites-enabled/
-nginx -t  # Test the configuration
-systemctl reload nginx  # Apply the configuration
+cd backend
+# Enable hot-reload for development
+uvicorn main:app --host 127.0.0.1 --port 5000 --reload
 ```
 
-#### 3. GitHub OAuth Setup
+2. **Start the Frontend in Development Mode**:
+```bash
+cd frontend
+# Install dependencies if not already done
+npm install
+# Start development server
+npm run dev
+```
 
-1. Create a GitHub OAuth application at https://github.com/settings/developers
-   - Set Homepage URL to `https://your-domain.com`
-   - Set Authorization callback URL to `https://your-domain.com/auth/callback`
+The application will be available at:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:5000
 
-#### 4. Running Services
+For local development, ensure your `.env` files are configured with local URLs:
 
-1. Backend:
+1. **Backend** (`backend/.env`):
+```env
+FRONTEND_URL=http://localhost:3000
+GITHUB_CALLBACK_URL=http://localhost:5000/auth/callback
+```
+
+2. **Frontend** (`frontend/.env`):
+```env
+NEXT_PUBLIC_BACKEND_URL=http://localhost:5000
+NEXT_PUBLIC_API_URL=http://localhost:5000
+```
+
+### Production Deployment
+
+1. **Start the Backend**:
 ```bash
 cd backend
 uvicorn main:app --host 127.0.0.1 --port 5000
 ```
 
-2. Frontend:
+2. **Start the Frontend**:
 ```bash
 cd frontend
 npm run build
 npm run start
 ```
 
-Consider using process managers like PM2 or systemd to manage these services:
+## Access Control
 
-```bash
-# Using PM2
-pm2 start "cd backend && uvicorn main:app --host 127.0.0.1 --port 5000" --name pepsi-backend
-pm2 start "cd frontend && npm run start" --name pepsi-frontend
+- **Regular Users**: Configure allowed GitHub usernames in `ALLOWED_USERS`
+- **Administrators**: Configure admin GitHub usernames in `ADMIN_USERS`
+
+These users will have access to the application and admin panel respectively.
+
+## Config Models
+
+At the moment, the application supports running the comparison of the two models. These
+should be configured in the `.env` file.
+
+```env
+FINETUNED_MODEL_NAME=stacklok/Qwen2.5-Coder-0.5B-codegate
+BASE_MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
 ```
 
-## Server Setup
-
-First, clone the repository:
-```
+The application will then perform a comparison of the two models.
