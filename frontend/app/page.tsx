@@ -9,6 +9,8 @@ type SubmissionState = 'idle' | 'submitting' | 'success';
 
 export default function Home() {
   const [prefix, setPrefix] = useState('');
+  const [suffix, setSuffix] = useState('');
+  const [isSuffixVisible, setIsSuffixVisible] = useState(false);
   const [results, setResults] = useState<{
     baseResponse: string;
     finetunedResponse: string;
@@ -22,7 +24,12 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
+    if (!prefix.trim()) {
+  alert('Please enter a code snippet before submitting.');
+  return;
+}
+
+setIsLoading(true);
 
     try {
       const response = await fetch('/api/generate', {
@@ -31,7 +38,7 @@ export default function Home() {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         credentials: 'include',
-        body: `prefix=${encodeURIComponent(prefix)}`,
+        body: `prefix=${encodeURIComponent(prefix)}&suffix=${encodeURIComponent(suffix)}`,
       });
 
       const data = await response.json();
@@ -137,7 +144,7 @@ export default function Home() {
         {/* Input Section */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-xl p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+          <div>
               <label htmlFor="code-input" className="block text-lg font-medium text-gray-200 mb-2">
                 Enter your code snippet
               </label>
@@ -150,6 +157,32 @@ export default function Home() {
                 placeholder="def main():"
               />
             </div>
+            <div>
+              <button
+                type="button"
+                onClick={() => setIsSuffixVisible(!isSuffixVisible)}
+                className="text-blue-500 hover:underline"
+              >
+                Enter Suffix (Optional)
+              </button>
+            </div>
+            {isSuffixVisible && (
+              <>
+                <div>
+                  <label htmlFor="code-suffix" className="block text-lg font-medium text-gray-200 mb-2">
+                    Enter your code suffix
+                  </label>
+                  <textarea
+                    id="code-suffix"
+                    value={suffix}
+                    onChange={(e) => setSuffix(e.target.value)}
+                    className="w-full h-48 p-4 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm text-gray-100
+                              focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
+                    placeholder="print('Hello, World!')"
+                  />
+                </div>
+              </>
+            )}
             <button
               type="submit"
               disabled={isLoading}
@@ -180,7 +213,7 @@ export default function Home() {
               <div>
                 <CodeComparison
                   title="Model A"
-                  code={prefix + (modelAIsBase ? results.baseResponse : results.finetunedResponse)}
+                  code={prefix + (modelAIsBase ? results.baseResponse : results.finetunedResponse) + suffix}
                 />
                 <div className="mt-4 flex items-center">
                   <input
@@ -198,7 +231,7 @@ export default function Home() {
               <div>
                 <CodeComparison
                   title="Model B"
-                  code={prefix + (modelAIsBase ? results.finetunedResponse : results.baseResponse)}
+                  code={prefix + (modelAIsBase ? results.finetunedResponse : results.baseResponse) + suffix}
                 />
                 <div className="mt-4 flex items-center">
                   <input
