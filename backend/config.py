@@ -23,7 +23,7 @@ class Config:
 
     # Model configs
     BASE_MODEL_NAME = "Qwen/Qwen2.5-Coder-0.5B"
-    FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-0.5B-codegate"
+    FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-0.5B-curriculum-codegate"
 
     # Frontend URL
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://acme.com')

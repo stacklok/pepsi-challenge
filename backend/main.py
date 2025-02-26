@@ -121,14 +121,14 @@ async def home():
     return {"message": "API is running"}
 
 @app.post("/api/generate")
-async def generate(request: Request, prefix: str = Form(...)):
+async def generate(request: Request, prefix: str = Form(...), suffix: str = Form(...)):
     if "user" not in request.session:
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     model_a_is_base = random.choice([True, False])
 
-    base_response = test_completion(base_model, tokenizer, [{"prefix": prefix, "suffix": ""}])
-    peft_response = test_completion(peft_model, tokenizer, [{"prefix": prefix, "suffix": ""}])
+    base_response = test_completion(base_model, tokenizer, [{"prefix": prefix, "suffix": suffix}])
+    peft_response = test_completion(peft_model, tokenizer, [{"prefix": prefix, "suffix": suffix}])
 
     print(f"Model A is {'base' if model_a_is_base else 'finetuned'} model")
 
@@ -540,4 +540,4 @@ async def get_user_stats(request: Request):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="localhost", port=8000)
