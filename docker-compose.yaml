@@ -1,0 +1,83 @@
+version: '3.8'
+
+services:
+
+  nginx:
+    container_name: nginx
+    build:
+      context: .
+      dockerfile: DockerfileNginx
+    ports:
+      - "80:80"
+    networks:
+      - app-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  backend:
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    volumes:
+      - ./comparisons.db:/app/comparisons.db
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - SESSION_SECRET_KEY=your-secret-key-here
+      # GitHub OAuth
+      - GITHUB_CLIENT_ID=[fill in]
+      - GITHUB_CLIENT_SECRET=f[fill in]
+      - GITHUB_CALLBACK_URL=[fill in]
+      # Model Configuration
+      - BASE_MODEL_NAME=Qwen/Qwen2.5-Coder-0.5B
+      - FINETUNED_MODEL_NAME=stacklok/Qwen2.5-Coder-0.5B-codegate
+      - FRONTEND_URL=[fill in]
+      # Access Control
+      - ALLOWED_USERS=ChrisJBurns,lukehinds,evankanderson
+      - ADMIN_USERS=ChrisJBurns,lukehinds,evankanderson
+      # Development Settings
+      - WATCHFILES_FORCE_POLLING=false
+      - WATCHFILES_IGNORE_PATHS=*/unsloth_compiled_cache/*
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+
+  frontend:
+    container_name: frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    environment:
+    - NEXT_PUBLIC_BACKEND_URL=http://backend:5000
+    - NEXT_PUBLIC_API_URL=http://backend:5000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
