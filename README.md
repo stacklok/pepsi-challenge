@@ -126,6 +126,12 @@ NEXT_PUBLIC_API_URL=http://localhost:5000
 
 ### Production Deployment
 
+We recommend building a Docker container for the frontend and backend,
+and then using that to run the application.  Note that the backend
+uses CUDA, so you'll need a *build* machine that has CUDA and a GPU
+passed through.  You'll also need to pass through a GPU to the backend
+container; the frontend container is just a normal-non-GPU container.
+
 1. **Start the Backend**:
 ```bash
 cd backend
@@ -135,6 +141,7 @@ uvicorn main:app --host 127.0.0.1 --port 5000
 2. **Start the Frontend**:
 ```bash
 cd frontend
+npm install --omit=dev
 npm run build
 npm run start
 ```
