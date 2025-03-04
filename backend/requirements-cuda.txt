@@ -1,5 +1,5 @@
 # CUDA-specific requirements
 -r requirements.txt
 unsloth @ git+https://github.com/unslothai/unsloth.git@d1d15f1d14f1168837d29b9c08e9b6d63945d469
-xformers @ https://download.pytorch.org/whl/cu124/xformers-0.0.28.post2-cp310-cp310-manylinux_2_28_x86_64.whl
-bitsandbytes==0.45.2 
+xformers @ https://download.pytorch.org/whl/cu121/xformers-0.0.28.post2-cp310-cp310-manylinux_2_28_x86_64.whl
+bitsandbytes==0.45.2
