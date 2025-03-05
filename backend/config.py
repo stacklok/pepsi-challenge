@@ -36,3 +36,5 @@ class Config:
     
     # Update callback URL to be environment-aware
     GITHUB_CALLBACK_URL = os.getenv('GITHUB_CALLBACK_URL', f"{BACKEND_URL}/auth/callback")
+
+    LOCAL_ENV = os.getenv('LOCAL_ENV', False)
