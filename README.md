@@ -116,6 +116,7 @@ For local development, ensure your `.env` files are configured with local URLs:
 ```env
 FRONTEND_URL=http://localhost:3000
 GITHUB_CALLBACK_URL=http://localhost:5000/auth/callback
+LOCAL_ENV=True
 ```
 
 2. **Frontend** (`frontend/.env`):

@@ -169,8 +169,17 @@ async def submit_preference(request: Request):
 @app.get("/auth/login")
 async def github_login(request: Request, redirect_uri: str = Config.FRONTEND_URL):
     request.session['redirect_uri'] = redirect_uri
+
+    if Config.LOCAL_ENV == True:
+        return await oauth.github.authorize_redirect(
+            request, request.url_for('github_callback')
+        )
+
+    # in a deployed environment in front of nginx, the callbackURL
+    # is HTTP and we need it to be HTTPS which is why we use the
+    # CALLBACK_URL env var
     return await oauth.github.authorize_redirect(
-        request, request.url_for('github_callback')
+        request, Config.GITHUB_CALLBACK_URL
     )
 
 def is_allowed_user(username: str) -> bool:
