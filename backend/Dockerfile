@@ -36,8 +36,9 @@ WORKDIR /app
 # Copy requirements.txt and install dependencies
 COPY requirements-cuda.txt .
 COPY requirements.txt .
+RUN pip install --upgrade pip
 RUN pip install --ignore-installed -r requirements-cuda.txt
-RUN pip install unsloth_zoo
+RUN pip install "unsloth_zoo==2025.3.3"
 
 # Copy the rest of your application
 COPY . .
