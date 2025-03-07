@@ -722,9 +722,8 @@ async def get_user_from_database(username: str):
     """
     Retrieve a single user from the database.
     
-        
     Returns:
-        The user data or "False" to indicate no user exists.
+        The user data or "None" to indicate no user exists.
     """
     db_session = UsersDBSession()
 
