@@ -7,6 +7,9 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'LLM Code Comparison',
   description: 'Compare base and finetuned LLM code completions',
+  icons: {
+    icon: '/favicon.png',
+  },
 };
 
 export default function RootLayout({

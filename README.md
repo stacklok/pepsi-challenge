@@ -18,7 +18,7 @@ Pepsi-Challenge is a server application for testing and validating Stacklok fine
 ### Prerequisites
 
 - Python 3.12
-- Node.js (for frontend)
+- Node.js v22.x (for frontend)
 - NVIDIA GPU with CUDA 12.1 or Apple Silicon device
 
 ### Installation
@@ -50,9 +50,6 @@ pip install -r requirements-cuda.txt
 
 1. **Backend Environment Setup** (`backend/.env`):
 ```env
-# Security
-SESSION_SECRET_KEY=your-secret-key-here
-
 # GitHub OAuth
 GITHUB_CLIENT_ID=your-github-client-id
 GITHUB_CLIENT_SECRET=your-github-client-secret
@@ -101,7 +98,7 @@ uvicorn main:app --host 127.0.0.1 --port 5000 --reload
 ```bash
 cd frontend
 # Install dependencies if not already done
-npm install
+npm ci
 # Start development server
 npm run dev
 ```
