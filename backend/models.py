@@ -2,6 +2,7 @@ from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
+from enum import Enum
 
 Base = declarative_base()
 
@@ -45,3 +46,7 @@ Base.metadata.create_all(engine)
 
 # Create session factory
 Session = sessionmaker(bind=engine)
+
+class Mode(str, Enum):
+    fim = "fim"
+    chat = "chat"
