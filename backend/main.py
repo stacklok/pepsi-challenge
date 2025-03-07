@@ -199,7 +199,7 @@ async def github_callback(request: Request):
         username = user_info['login']
 
         # Check if user is allowed (if they exist in the users db)
-        if not get_user(request, username):
+        if await get_user(request, username) is None:
             return RedirectResponse(
                 url=f"{Config.FRONTEND_URL}/error?type=access_denied&message=Sorry, this is a limited access preview. Your GitHub username ({username}) is not on the allowed users list."
             )
@@ -725,11 +725,8 @@ async def get_user(request: Request,username: str):
     
         
     Returns:
-        List of dictionaries containing user information
+        The user data or "False" to indicate no user exists.
     """
-    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
-        raise HTTPException(status_code=403, detail="Not authorized")
-
     db_session = UsersDBSession()
 
     try:
@@ -737,8 +734,11 @@ async def get_user(request: Request,username: str):
         user = db_session.execute(query).scalar_one_or_none()
 
         if user is not None:
+            logger.info(f"Retrieved user: {username}")
             return user
-        return {}
+
+        logger.info(f"User not found: {username}")
+        return None
     except Exception as e:
         logger.error(f"Error retrieving user: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve user '{username}'")
