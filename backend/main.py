@@ -727,8 +727,8 @@ async def get_user(request: Request,username: str):
     Returns:
         List of dictionaries containing user information
     """
-    # if "user" not in request.session or not is_admin(request.session["user"]["username"]):
-    #     raise HTTPException(status_code=403, detail="Not authorized")
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     db_session = UsersDBSession()
 
