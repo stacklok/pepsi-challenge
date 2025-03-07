@@ -6,16 +6,23 @@ from fastapi.responses import RedirectResponse, JSONResponse, FileResponse, Stre
 import platform
 from authlib.integrations.starlette_client import OAuth
 from models import Session as DBSession, ComparisonResult
+from user_management import Session as UsersDBSession, User
 import random
 from config import Config
 import secrets
 from starlette.middleware.sessions import SessionMiddleware
 from typing import Optional
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 import os
 import csv
 import io
 import json
+
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 
 app = FastAPI()
@@ -23,7 +30,7 @@ app = FastAPI()
 # Session configuration
 app.add_middleware(
     SessionMiddleware,
-    secret_key=Config.SECRET_KEY or secrets.token_hex(32),
+    secret_key=secrets.token_hex(32),
     session_cookie="pepsi_session",
     max_age=7 * 24 * 60 * 60,  # 7 days in seconds
     same_site="lax",
@@ -35,7 +42,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[Config.FRONTEND_URL],
     allow_credentials=True,
-    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_methods=["GET", "POST", "OPTIONS", "PUT", "DELETE"],
     allow_headers=["Content-Type", "Authorization", "Cookie"],
     expose_headers=["Content-Type", "Set-Cookie", "*"],
 )
@@ -182,10 +189,6 @@ async def github_login(request: Request, redirect_uri: str = Config.FRONTEND_URL
         request, Config.GITHUB_CALLBACK_URL
     )
 
-def is_allowed_user(username: str) -> bool:
-    allowed_users = os.getenv('ALLOWED_USERS', '').strip().split(',')
-    return username.strip() in [u.strip() for u in allowed_users if u]
-
 @app.get("/auth/callback")
 async def github_callback(request: Request):
     try:
@@ -195,8 +198,8 @@ async def github_callback(request: Request):
 
         username = user_info['login']
 
-        # Check if user is allowed
-        if not is_allowed_user(username):
+        # Check if user is allowed (if they exist in the users db)
+        if not get_user(request, username):
             return RedirectResponse(
                 url=f"{Config.FRONTEND_URL}/error?type=access_denied&message=Sorry, this is a limited access preview. Your GitHub username ({username}) is not on the allowed users list."
             )
@@ -225,15 +228,33 @@ async def logout(request: Request):
 async def get_user(request: Request):
     return request.session.get('user', {})
 
-def is_admin(username: str) -> bool:
-    admin_users = Config.ADMIN_USERS.split(',')
-    return username in admin_users
-
 @app.get("/auth/is_admin")
 async def check_admin(request: Request):
     if "user" not in request.session:
         return {"is_admin": False}
     return {"is_admin": is_admin(request.session["user"]["username"])}
+
+def is_admin(username: str) -> bool:
+    """
+    Check if a user has admin privileges.
+    
+    Args:
+        username: Username to check
+        
+    Returns:
+        bool: True if the user exists and is an admin, False otherwise
+    """
+    db_session = UsersDBSession()
+    try:
+        query = select(User).where(User.username == username)
+        result = db_session.execute(query).first()            
+        user = result[0]  # Extract User object from result tuple
+        return user.admin
+    except Exception as e:
+        logger.error(f"Error checking admin status: {e}")
+        return False
+    finally:
+        db_session.close()
 
 @app.get("/api/admin/results")
 async def get_results(
@@ -546,6 +567,183 @@ async def get_user_stats(request: Request):
         },
         "recent_comparisons": recent_comparisons
     }
+
+@app.post("/api/admin/users")
+async def post_users(request: Request):
+    """
+    Add a new user to the database.
+
+    Args:
+        username: User's username
+        admin: Whether the user is an admin (default: False)
+    """
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    data = await request.json()
+    db_session = UsersDBSession()
+
+    try:
+        result = User(
+            username=data.get('username'),
+            admin=data.get('admin', False)
+        )
+
+        db_session.add(result)
+        db_session.commit()
+        return {"success": True}
+    except Exception as e:
+        db_session.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db_session.close()
+
+@app.put("/api/admin/users/{username}/grant-admin")
+async def grant_admin(request: Request, username: str):
+    """
+    Grants Admin to a user in the database.
+
+    Args:
+        username: User's username
+    """
+
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_session = UsersDBSession()
+
+    try:
+        query = select(User).where(User.username == username)
+        result = db_session.execute(query).first()
+        user = result[0]
+
+        user.admin = True
+        db_session.commit()
+        logger.info(f"Granted admin privileges to user '{username}'")
+        return {"success": True}
+    except Exception as e:
+        db_session.rollback()
+        logger.error(f"Error granting admin privileges: {e}")
+        return {"success": False}
+    finally:
+        db_session.close()
+
+@app.put("/api/admin/users/{username}/revoke-admin")
+async def revoke_admin(request: Request, username: str):
+    """
+    Revoke Admin from a user in the database.
+
+    Args:
+        username: User's username
+    """
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_session = UsersDBSession()
+
+    try:
+        query = select(User).where(User.username == username)
+        result = db_session.execute(query).first()
+        user = result[0]
+
+        user.admin = False
+        db_session.commit()
+        logger.info(f"Granted admin privileges to user '{username}'")
+        return {"success": True}
+    except Exception as e:
+        db_session.rollback()
+        logger.error(f"Error granting admin privileges: {e}")
+        return {"success": False}
+    finally:
+        db_session.close()
+
+@app.delete("/api/admin/users/{username}")
+async def delete_users(request: Request, username: str):
+    """
+    Deletes new user from the database.
+
+    Args:
+        username: User's username
+    """
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_session = UsersDBSession()
+
+    try:
+        query = select(User).where(User.username == username)
+        user = db_session.execute(query).scalar_one_or_none()
+
+        db_session.delete(user)
+        db_session.commit()
+        logger.info(f"User '{username}' deleted successfully")
+        return {"message": f"User '{username}' deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting user: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to delete user '{username}'")
+    finally:
+        db_session.close()
+        
+@app.get("/api/admin/users")
+async def get_users(request: Request, admin_only: bool = False):
+    """
+    Retrieve users from the database.
+    
+    Args:
+        admin_only: If True, return only admin users
+        
+    Returns:
+        List of dictionaries containing user information
+    """
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_session = UsersDBSession()
+
+    try:
+        query = select(User)
+        if admin_only:
+            query = query.where(User.admin == True)
+            
+        users = db_session.execute(query).scalars().all()
+        user_list = [user.to_dict() for user in users]
+        
+        filter_text = "admin users" if admin_only else "users"
+        logger.info(f"Retrieved {len(user_list)} {filter_text}")
+        return user_list
+        
+    except Exception as e:
+        logger.error(f"Error retrieving users: {e}")
+        return []
+    finally:
+        db_session.close()
+
+@app.get("/api/admin/users/{username}")
+async def get_user(request: Request,username: str):
+    """
+    Retrieve a single user from the database.
+    
+        
+    Returns:
+        List of dictionaries containing user information
+    """
+    if "user" not in request.session or not is_admin(request.session["user"]["username"]):
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db_session = UsersDBSession()
+
+    try:
+        query = select(User).where(User.username == username)
+        user = db_session.execute(query).scalar_one_or_none()
+
+        if user is not None:
+            return user
+        return {}
+    except Exception as e:
+        logger.error(f"Error retrieving user: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve user '{username}'")
+    finally:
+        db_session.close()
 
 if __name__ == "__main__":
     import uvicorn

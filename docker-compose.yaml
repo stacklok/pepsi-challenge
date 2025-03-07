@@ -23,6 +23,8 @@ services:
       - "5000:5000"
     volumes:
       - ./comparisons.db:/app/comparisons.db
+      - ./users.db:/app/users.db
+      - ./backend/.env:/app/.env
     deploy:
       resources:
         reservations:
@@ -33,7 +35,6 @@ services:
     environment:
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-      - SESSION_SECRET_KEY=your-secret-key-here
       # GitHub OAuth
       - GITHUB_CLIENT_ID=[fill in]
       - GITHUB_CLIENT_SECRET=f[fill in]
@@ -66,6 +67,8 @@ services:
     ports:
       - "3000:3000"
     restart: unless-stopped
+    volumes:
+      - ./frontend/.env:/app/.env
     environment:
     - NEXT_PUBLIC_BACKEND_URL=http://backend:5000
     - NEXT_PUBLIC_API_URL=http://backend:5000
