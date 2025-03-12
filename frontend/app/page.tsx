@@ -1,15 +1,22 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
-import CodeComparison from '../components/CodeComparison';
-import UserAvatar from '../components/UserAvatar';
-import { CheckCircleIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from "react";
+import CodeComparison from "../components/CodeComparison";
+import UserAvatar from "../components/UserAvatar";
+import { CheckCircleIcon } from "@heroicons/react/24/outline";
+import { Select } from "@/components/Select";
+import { Chat } from "@/components/code-generation/Chat";
+import { Fim } from "@/components/code-generation/Fim";
 
-type SubmissionState = 'idle' | 'submitting' | 'success';
+type SubmissionState = "idle" | "submitting" | "success";
+const REQUEST_TYPE_OPTIONS = [
+  { label: "FIM", value: "fim" },
+  { label: "Chat", value: "chat" },
+];
 
 export default function Home() {
-  const [prefix, setPrefix] = useState('');
-  const [suffix, setSuffix] = useState('');
+  const [prefix, setPrefix] = useState("");
+  const [suffix, setSuffix] = useState("");
   const [isSuffixVisible, setIsSuffixVisible] = useState(false);
   const [results, setResults] = useState<{
     baseResponse: string;
@@ -17,28 +24,35 @@ export default function Home() {
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [modelAIsBase, setModelAIsBase] = useState<boolean | null>(null);
-  const [preferredModel, setPreferredModel] = useState<'A' | 'B' | null>(null);
+  const [preferredModel, setPreferredModel] = useState<"A" | "B" | null>(null);
   const [user, setUser] = useState<any>(null);
-  const [submitted, setSubmitted] = useState(false);
-  const [submissionState, setSubmissionState] = useState<SubmissionState>('idle');
+  const [prompt, setPrompt] = useState("");
+  const [submissionState, setSubmissionState] =
+    useState<SubmissionState>("idle");
+  const [requestType, setRequestType] = useState("fim");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!prefix.trim()) {
-  alert('Please enter a code snippet before submitting.');
-  return;
-}
+    if (!prompt && !prefix.trim()) {
+      alert("Please enter a code snippet before submitting.");
+      return;
+    }
 
-setIsLoading(true);
+    setIsLoading(true);
+    const body = prompt
+      ? `prompt=${encodeURIComponent(prompt)}&mode=chat`
+      : `prefix=${encodeURIComponent(prefix)}&suffix=${encodeURIComponent(
+          suffix
+        )}&mode=fim`;
 
     try {
-      const response = await fetch('/api/generate', {
-        method: 'POST',
+      const response = await fetch("/api/generate", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
+          "Content-Type": "application/x-www-form-urlencoded",
         },
-        credentials: 'include',
-        body: `prefix=${encodeURIComponent(prefix)}&suffix=${encodeURIComponent(suffix)}`,
+        credentials: "include",
+        body,
       });
 
       const data = await response.json();
@@ -48,7 +62,7 @@ setIsLoading(true);
         finetunedResponse: data.modelAIsBase ? data.modelB : data.modelA,
       });
     } catch (error) {
-      console.error('Error:', error);
+      console.error("Error:", error);
     } finally {
       setIsLoading(false);
     }
@@ -57,61 +71,63 @@ setIsLoading(true);
   const handlePreferenceSubmit = async () => {
     if (!preferredModel || modelAIsBase === null) return;
 
-    setSubmissionState('submitting');
+    setSubmissionState("submitting");
 
-    const preferredModelType = (
-      (preferredModel === 'A' && modelAIsBase) ||
-      (preferredModel === 'B' && !modelAIsBase)
-    ) ? 'base' : 'finetuned';
+    const preferredModelType =
+      (preferredModel === "A" && modelAIsBase) ||
+      (preferredModel === "B" && !modelAIsBase)
+        ? "base"
+        : "finetuned";
 
     try {
-      await fetch('/api/submit-preference', {
-        method: 'POST',
+      await fetch("/api/submit-preference", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({
           preferredModel: preferredModelType,
-          codePrefix: prefix,
-          baseCompletion: modelAIsBase ? results.baseResponse : results.finetunedResponse,
-          finetunedCompletion: modelAIsBase ? results.finetunedResponse : results.baseResponse
+          codePrefix: prefix || prompt,
+          baseCompletion: results.baseResponse,
+          finetunedCompletion: results.finetunedResponse,
         }),
       });
 
-      setSubmissionState('success');
+      setSubmissionState("success");
 
       // Reset form after 2 seconds
       setTimeout(() => {
-        setPrefix('');
+        setPrefix("");
+        setSuffix("");
+        setPrompt("");
         setResults(null);
         setPreferredModel(null);
         setModelAIsBase(null);
-        setSubmissionState('idle');
+        setSubmissionState("idle");
       }, 2000);
-
     } catch (error) {
-      console.error('Error submitting preference:', error);
-      setSubmissionState('idle');
+      console.error("Error submitting preference:", error);
+      setSubmissionState("idle");
     }
   };
 
   const handleLogin = () => {
-    window.location.href = '/auth/login';
+    window.location.href = "/auth/login";
   };
 
   // Only check user status once when component mounts
   useEffect(() => {
-    fetch('/auth/user', {
-      credentials: 'include'
+    fetch("/auth/user", {
+      credentials: "include",
     })
-    .then(res => res.json())
-    .then(data => {
-      if (data.username) {
-        setUser(data);
-      }
-    })
-    .catch(console.error);
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.username) {
+          setUser(data);
+        }
+      })
+      .catch(console.error);
   }, []);
 
   if (!user) {
@@ -134,55 +150,43 @@ setIsLoading(true);
       <header className="border-b border-gray-700">
         <div className="max-w-7xl mx-auto py-6 px-4 flex justify-between items-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-          🥤 LLM Pepsi Challenge
+            🥤 LLM Pepsi Challenge
           </h1>
           <UserAvatar user={user} />
         </div>
       </header>
-
       <main className="max-w-7xl mx-auto py-8 px-4 flex flex-col gap-8">
         {/* Input Section */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-xl p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-              <label htmlFor="code-input" className="block text-lg font-medium text-gray-200 mb-2">
-                Enter your code snippet
+            <div className="mb-4">
+              <label
+                htmlFor="request-type"
+                className="block text-lg font-medium text-gray-200 mb-2"
+              >
+                Choose your request type
               </label>
-              <textarea
-                id="code-input"
-                value={prefix}
-                onChange={(e) => setPrefix(e.target.value)}
-                className="w-full h-48 p-4 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm text-gray-100
-                          focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
-                placeholder="def main():"
+              <Select
+                id="request-type"
+                className="w-[200px] bg-gray-900"
+                value={requestType}
+                onChange={setRequestType}
+                options={REQUEST_TYPE_OPTIONS}
               />
             </div>
-            <div>
-              <button
-                type="button"
-                onClick={() => setIsSuffixVisible(!isSuffixVisible)}
-                className="text-blue-500 hover:underline"
-              >
-                Enter Suffix (Optional)
-              </button>
-            </div>
-            {isSuffixVisible && (
-              <>
-                <div>
-                  <label htmlFor="code-suffix" className="block text-lg font-medium text-gray-200 mb-2">
-                    Enter your code suffix
-                  </label>
-                  <textarea
-                    id="code-suffix"
-                    value={suffix}
-                    onChange={(e) => setSuffix(e.target.value)}
-                    className="w-full h-48 p-4 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm text-gray-100
-                              focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
-                    placeholder="print('Hello, World!')"
-                  />
-                </div>
-              </>
+            {requestType === "chat" ? (
+              <Chat setPrompt={setPrompt} prompt={prompt} />
+            ) : (
+              <Fim
+                prefix={prefix}
+                suffix={suffix}
+                setPrefix={setPrefix}
+                isSuffixVisible={isSuffixVisible}
+                setSuffix={setSuffix}
+                setIsSuffixVisible={setIsSuffixVisible}
+              />
             )}
+
             <button
               type="submit"
               disabled={isLoading}
@@ -193,14 +197,30 @@ setIsLoading(true);
             >
               {isLoading ? (
                 <span className="flex items-center justify-center">
-                  <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <svg
+                    className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
                   </svg>
                   Processing...
                 </span>
               ) : (
-                'Compare Models'
+                "Compare Models"
               )}
             </button>
           </form>
@@ -213,7 +233,13 @@ setIsLoading(true);
               <div>
                 <CodeComparison
                   title="Model A"
-                  code={prefix + (modelAIsBase ? results.baseResponse : results.finetunedResponse) + suffix}
+                  code={
+                    prefix +
+                    (modelAIsBase
+                      ? results.baseResponse
+                      : results.finetunedResponse) +
+                    suffix
+                  }
                 />
                 <div className="mt-4 flex items-center">
                   <input
@@ -221,8 +247,8 @@ setIsLoading(true);
                     id="preferA"
                     name="preference"
                     value="A"
-                    checked={preferredModel === 'A'}
-                    onChange={() => setPreferredModel('A')}
+                    checked={preferredModel === "A"}
+                    onChange={() => setPreferredModel("A")}
                     className="mr-2"
                   />
                   <label htmlFor="preferA">Preferred Output</label>
@@ -231,7 +257,13 @@ setIsLoading(true);
               <div>
                 <CodeComparison
                   title="Model B"
-                  code={prefix + (modelAIsBase ? results.finetunedResponse : results.baseResponse) + suffix}
+                  code={
+                    prefix +
+                    (modelAIsBase
+                      ? results.finetunedResponse
+                      : results.baseResponse) +
+                    suffix
+                  }
                 />
                 <div className="mt-4 flex items-center">
                   <input
@@ -239,8 +271,8 @@ setIsLoading(true);
                     id="preferB"
                     name="preference"
                     value="B"
-                    checked={preferredModel === 'B'}
-                    onChange={() => setPreferredModel('B')}
+                    checked={preferredModel === "B"}
+                    onChange={() => setPreferredModel("B")}
                     className="mr-2"
                   />
                   <label htmlFor="preferB">Preferred Output</label>
@@ -253,9 +285,11 @@ setIsLoading(true);
                 onClick={handlePreferenceSubmit}
                 disabled={!preferredModel}
                 className={`px-8 py-3 rounded-lg font-medium transition-all duration-200 transform hover:scale-105
-                  ${preferredModel
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white'
-                    : 'bg-gray-700 text-gray-400 cursor-not-allowed'}`}
+                  ${
+                    preferredModel
+                      ? "bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white"
+                      : "bg-gray-700 text-gray-400 cursor-not-allowed"
+                  }`}
               >
                 Submit Preference
               </button>
@@ -265,15 +299,25 @@ setIsLoading(true);
       </main>
 
       {/* Success overlay */}
-      {submissionState !== 'idle' && (
-        <div className={`fixed inset-0 bg-black/50 flex items-center justify-center transition-opacity duration-300
-          ${submissionState === 'success' ? 'opacity-100' : 'opacity-0'}`}>
-          <div className={`bg-gray-800 rounded-lg p-8 transform transition-all duration-300
-            ${submissionState === 'success' ? 'scale-100 opacity-100' : 'scale-95 opacity-0'}`}>
+      {submissionState !== "idle" && (
+        <div
+          className={`fixed inset-0 bg-black/50 flex items-center justify-center transition-opacity duration-300
+          ${submissionState === "success" ? "opacity-100" : "opacity-0"}`}
+        >
+          <div
+            className={`bg-gray-800 rounded-lg p-8 transform transition-all duration-300
+            ${
+              submissionState === "success"
+                ? "scale-100 opacity-100"
+                : "scale-95 opacity-0"
+            }`}
+          >
             <div className="flex flex-col items-center gap-4">
               <CheckCircleIcon className="w-16 h-16 text-green-400 animate-bounce" />
               <h2 className="text-2xl font-semibold text-white">Thank you!</h2>
-              <p className="text-gray-300">Your feedback has been submitted successfully.</p>
+              <p className="text-gray-300">
+                Your feedback has been submitted successfully.
+              </p>
             </div>
           </div>
         </div>

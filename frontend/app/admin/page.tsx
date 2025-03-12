@@ -387,7 +387,7 @@ export default function AdminPanel() {
                   <tr className="border-b">
                     <th className="text-left p-2">User</th>
                     <th className="text-left p-2">Preferred Model</th>
-                    <th className="text-left p-2">Code Prefix</th>
+                    <th className="text-left p-2">Prompt</th>
                     <th className="text-left p-2">Created At</th>
                   </tr>
                 </thead>
