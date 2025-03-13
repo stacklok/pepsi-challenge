@@ -110,15 +110,31 @@ def load_base_model(model_name):
 
 
 def load_peft_model(base_model, peft_model):
-    model, tokenizer = load_base_model(base_model)
-    model = PeftModel.from_pretrained(model, peft_model)
+    if IS_MACOS:
+        model, tokenizer = load_base_model(base_model)
+        model = PeftModel.from_pretrained(model, peft_model)
+    else:
+        from unsloth import FastLanguageModel
+
+        model, tokenizer = FastLanguageModel.from_pretrained(
+            model_name=peft_model,
+            max_seq_length=max_seq_length,
+            dtype=dtype,
+            load_in_4bit=load_in_4bit,
+        )
     return model, tokenizer
 
 
-# Load models
-base_model, tokenizer = load_base_model(Config.BASE_MODEL_NAME)
-peft_model, tokenizer = load_peft_model(
-    Config.BASE_MODEL_NAME, Config.FINETUNED_MODEL_NAME
+# Load FIM models
+fim_base_model, fim_base_tokenizer = load_base_model(Config.FIM_BASE_MODEL_NAME)
+fim_finetuned_model, fim_finetuned_tokenizer = load_peft_model(
+    Config.FIM_BASE_MODEL_NAME, Config.FIM_FINETUNED_MODEL_NAME
+)
+
+# Load CHAT models
+chat_base_model, chat_base_tokenizer = load_base_model(Config.CHAT_BASE_MODEL_NAME)
+chat_finetuned_model, chat_finetuned_tokenizer = load_peft_model(
+    Config.CHAT_BASE_MODEL_NAME, Config.CHAT_FINETUNED_MODEL_NAME
 )
 
 
@@ -129,28 +145,20 @@ def test_completion(model, tokenizer, prompt, mode="fim"):
             for x in prompt
         ]
     elif mode == "chat":
-        if not prompt:
-            raise ValueError("Chat mode requires prompt.")
-
-        conversation = "\n".join(
-            f"User: {x['message']}\nAI: {x.get('response', '')}" for x in prompt[:-1]
-        )
-        conversation += f"\nUser: {prompt[-1]['message']}\nAI:"
-
-        prompt = [conversation]
+        prompt = [
+            f"""<|im_start|>system\nYou are an expert on the Codegate project. Answer user's questions accurately.<|im_end|>\n<|im_start|>user\n{x.strip()}<|im_end|>\n<|im_start|>assistant\n"""
+            for x in prompt
+        ]
 
     if not IS_MACOS:
         from unsloth import FastLanguageModel
 
         FastLanguageModel.for_inference(model)
 
-    inputs = tokenizer(prompt, padding=True, return_tensors="pt").to(device)
+    inputs = tokenizer(prompt, return_tensors="pt").to(device)
 
     outputs = model.generate(
-        **inputs,
-        max_new_tokens=128,
-        use_cache=True,
-        pad_token_id=tokenizer.pad_token_id,
+        **inputs, max_new_tokens=512, use_cache=True, temperature=0.1, do_sample=True
     )
 
     outputs = tokenizer.batch_decode(outputs)
@@ -162,7 +170,11 @@ def test_completion(model, tokenizer, prompt, mode="fim"):
         ]
     elif mode == "chat":
         outputs = [
-            x.split("AI:")[-1].replace("<|endoftext|>", "").strip() for x in outputs
+            x.split("<|im_start|>assistant")[-1]
+            .replace("<|im_end|>", "")
+            .replace("<|endoftext|>", "")
+            .strip()
+            for x in outputs
         ]
 
     return outputs
@@ -189,16 +201,16 @@ async def generate(
         raise HTTPException(status_code=401, detail="Not authenticated")
 
     if mode == "fim":
-        if prefix is None or suffix is None:
+        if prefix is None:
             raise HTTPException(
-                status_code=400, detail="Prefix and suffix are required for FIM mode"
+                status_code=400, detail="Prefix is required for FIM mode"
             )
 
     elif mode == "chat":
         if not prompt or prompt.strip() == "":
             chat_prompt = []
         else:
-            chat_prompt = [{"message": prompt}]
+            chat_prompt = [prompt]
 
     else:
         raise HTTPException(
@@ -209,15 +221,25 @@ async def generate(
 
     if mode == "fim":
         base_response = test_completion(
-            base_model, tokenizer, [{"prefix": prefix, "suffix": suffix}], mode="fim"
+            fim_base_model,
+            fim_base_tokenizer,
+            [{"prefix": prefix, "suffix": suffix}],
+            mode="fim",
         )
         peft_response = test_completion(
-            peft_model, tokenizer, [{"prefix": prefix, "suffix": suffix}], mode="fim"
+            fim_finetuned_model,
+            fim_finetuned_tokenizer,
+            [{"prefix": prefix, "suffix": suffix}],
+            mode="fim",
         )
 
     elif mode == "chat":
-        base_response = test_completion(base_model, tokenizer, chat_prompt, mode="chat")
-        peft_response = test_completion(peft_model, tokenizer, chat_prompt, mode="chat")
+        base_response = test_completion(
+            chat_base_model, chat_base_tokenizer, chat_prompt, mode="chat"
+        )
+        peft_response = test_completion(
+            chat_finetuned_model, chat_finetuned_tokenizer, chat_prompt, mode="chat"
+        )
 
     print(f"Model A is {'base' if model_a_is_base else 'finetuned'} model")
 
