@@ -20,18 +20,25 @@ class Config:
     SQLITE_DB_PATH = os.getenv('SQLITE_DB_PATH', 'comparisons.db')
 
     # Model configs
-    BASE_MODEL_NAME = "Qwen/Qwen2.5-Coder-0.5B"
-    FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-0.5B-curriculum-codegate"
+    FIM_BASE_MODEL_NAME = "Qwen/Qwen2.5-Coder-0.5B"
+    FIM_FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-0.5B-curriculum-codegate"
+
+    CHAT_BASE_MODEL_NAME = "Qwen/Qwen2.5-Coder-7B"
+    CHAT_FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-7B-Instruct-codegate-chat"
+
 
     # Frontend URL
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://acme.com')
-    
+
+    # User DB Location
+    USER_DB_LOCATION = os.getenv('USER_DB_LOCATION', '/users.db')
+
     # Admin users
     ADMIN_USERS = os.getenv('ADMIN_USERS', '').strip()
 
     # Get the base URL for the backend
     BACKEND_URL = os.getenv('BACKEND_URL', 'http://localhost:5000')
-    
+
     # Update callback URL to be environment-aware
     GITHUB_CALLBACK_URL = os.getenv('GITHUB_CALLBACK_URL', f"{BACKEND_URL}/auth/callback")
 
