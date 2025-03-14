@@ -23,7 +23,7 @@ class Config:
     FIM_BASE_MODEL_NAME = "Qwen/Qwen2.5-Coder-0.5B"
     FIM_FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-0.5B-curriculum-codegate"
 
-    CHAT_BASE_MODEL_NAME = "Qwen/Qwen2.5-Coder-7B"
+    CHAT_BASE_MODEL_NAME = "Qwen/Qwen2.5-Coder-7B-Instruct"
     CHAT_FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-7B-Instruct-codegate-chat"
 
 
