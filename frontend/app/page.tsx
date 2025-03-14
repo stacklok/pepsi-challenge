@@ -168,6 +168,7 @@ export default function Home() {
                       : results.finetunedResponse) +
                     suffix
                   }
+                  isFim={experimentId?.includes('FIM')}
                 />
                 <div className="mt-4 flex items-center">
                   <input
@@ -192,6 +193,7 @@ export default function Home() {
                       : results.baseResponse) +
                     suffix
                   }
+                  isFim={experimentId?.includes('FIM')}
                 />
                 <div className="mt-4 flex items-center">
                   <input

@@ -10,29 +10,32 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
-    "@types/prismjs": "^1.26.5",
-    "@types/react-syntax-highlighter": "^15.5.13",
     "autoprefixer": "^10.4.20",
     "axios": "^1.6.7",
     "chart.js": "^4.4.8",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
-    "next": "^14.2.24",
-    "next-auth": "^4.24.5",
-    "prism-react-renderer": "^2.4.1",
-    "prismjs": "^1.29.0",
-    "react": "^18",
+    "github-markdown-css": "^5.8.1",
+    "next": "15.2.2",
+    "next-auth": "^4.24.9",
+    "react": "19.0.0",
     "react-chartjs-2": "^5.3.0",
-    "react-dom": "^18",
-    "react-syntax-highlighter": "^15.6.1",
+    "react-dom": "19.0.0",
+    "react-markdown": "^10.1.0",
+    "rehype-starry-night": "^2.2.0",
+    "remark-gfm": "^4.0.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss": "^3.4.17",
     "typescript": "^5"
   },
   "devDependencies": {
     "@types/node": "20.17.23",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4",
     "postcss": "^8.5.3"
+  },
+  "overrides": {
+    "@types/react": "19.0.10",
+    "@types/react-dom": "19.0.4"
   }
 }
