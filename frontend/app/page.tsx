@@ -4,32 +4,27 @@ import React, { useState, useEffect } from "react";
 import CodeComparison from "../components/CodeComparison";
 import UserAvatar from "../components/UserAvatar";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
-import { Select } from "@/components/Select";
 import { Chat } from "@/components/code-generation/Chat";
 import { Fim } from "@/components/code-generation/Fim";
-
-type SubmissionState = "idle" | "submitting" | "success";
-const REQUEST_TYPE_OPTIONS = [
-  { label: "FIM", value: "fim" },
-  { label: "Chat", value: "chat" },
-];
+import { useModels } from "@/hooks/useModels";
+import { ExperimentSelector } from "@/components/ExperimentSelector";
 
 export default function Home() {
   const [prefix, setPrefix] = useState("");
   const [suffix, setSuffix] = useState("");
   const [isSuffixVisible, setIsSuffixVisible] = useState(false);
-  const [results, setResults] = useState<{
-    baseResponse: string;
-    finetunedResponse: string;
-  } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [modelAIsBase, setModelAIsBase] = useState<boolean | null>(null);
-  const [preferredModel, setPreferredModel] = useState<"A" | "B" | null>(null);
   const [user, setUser] = useState<any>(null);
   const [prompt, setPrompt] = useState("");
-  const [submissionState, setSubmissionState] =
-    useState<SubmissionState>("idle");
-  const [requestType, setRequestType] = useState("fim");
+  const [preferredModel, setPreferredModel] = useState<"A" | "B" | null>(null);
+  const [experimentId, setExperimentId] = useState<string | undefined>();
+  const { 
+    results,
+    isLoading,
+    modelAIsBase,
+    submissionState,
+    generate,
+    submitPreference
+  } = useModels({ prompt, prefix, suffix, preferredModel, experimentId });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,79 +32,21 @@ export default function Home() {
       alert("Please enter a code snippet before submitting.");
       return;
     }
-
-    setIsLoading(true);
-    const body = prompt
-      ? `prompt=${encodeURIComponent(prompt)}&mode=chat`
-      : `prefix=${encodeURIComponent(prefix)}&suffix=${encodeURIComponent(
-          suffix
-        )}&mode=fim`;
-
-    try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
-        },
-        credentials: "include",
-        body,
-      });
-
-      const data = await response.json();
-      setModelAIsBase(data.modelAIsBase);
-      setResults({
-        baseResponse: data.modelAIsBase ? data.modelA : data.modelB,
-        finetunedResponse: data.modelAIsBase ? data.modelB : data.modelA,
-      });
-    } catch (error) {
-      console.error("Error:", error);
-    } finally {
-      setIsLoading(false);
-    }
+    generate()
   };
 
   const handlePreferenceSubmit = async () => {
     if (!preferredModel || modelAIsBase === null) return;
 
-    setSubmissionState("submitting");
+    await submitPreference()
 
-    const preferredModelType =
-      (preferredModel === "A" && modelAIsBase) ||
-      (preferredModel === "B" && !modelAIsBase)
-        ? "base"
-        : "finetuned";
-
-    try {
-      await fetch("/api/submit-preference", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          preferredModel: preferredModelType,
-          codePrefix: prefix || prompt,
-          baseCompletion: results.baseResponse,
-          finetunedCompletion: results.finetunedResponse,
-        }),
-      });
-
-      setSubmissionState("success");
-
-      // Reset form after 2 seconds
-      setTimeout(() => {
-        setPrefix("");
-        setSuffix("");
-        setPrompt("");
-        setResults(null);
-        setPreferredModel(null);
-        setModelAIsBase(null);
-        setSubmissionState("idle");
-      }, 2000);
-    } catch (error) {
-      console.error("Error submitting preference:", error);
-      setSubmissionState("idle");
-    }
+    // Reset form after 2 seconds
+    setTimeout(() => {
+      setPrefix("");
+      setSuffix("");
+      setPrompt("");
+      setPreferredModel(null);
+    }, 2000);
   };
 
   const handleLogin = () => {
@@ -129,6 +66,22 @@ export default function Home() {
       })
       .catch(console.error);
   }, []);
+
+  const renderExperimentContent = () => {
+    if (!experimentId) return null;
+    return experimentId?.includes('CHAT') ? (
+      <Chat setPrompt={setPrompt} prompt={prompt} />
+    ) : (
+      <Fim
+        prefix={prefix}
+        suffix={suffix}
+        setPrefix={setPrefix}
+        isSuffixVisible={isSuffixVisible}
+        setSuffix={setSuffix}
+        setIsSuffixVisible={setIsSuffixVisible}
+        />
+      )
+  }
 
   if (!user) {
     return (
@@ -159,33 +112,8 @@ export default function Home() {
         {/* Input Section */}
         <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-xl p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="mb-4">
-              <label
-                htmlFor="request-type"
-                className="block text-lg font-medium text-gray-200 mb-2"
-              >
-                Choose your request type
-              </label>
-              <Select
-                id="request-type"
-                className="w-[200px] bg-gray-900"
-                value={requestType}
-                onChange={setRequestType}
-                options={REQUEST_TYPE_OPTIONS}
-              />
-            </div>
-            {requestType === "chat" ? (
-              <Chat setPrompt={setPrompt} prompt={prompt} />
-            ) : (
-              <Fim
-                prefix={prefix}
-                suffix={suffix}
-                setPrefix={setPrefix}
-                isSuffixVisible={isSuffixVisible}
-                setSuffix={setSuffix}
-                setIsSuffixVisible={setIsSuffixVisible}
-              />
-            )}
+            <ExperimentSelector value={experimentId} onChange={setExperimentId} />
+            {renderExperimentContent()}
 
             <button
               type="submit"
