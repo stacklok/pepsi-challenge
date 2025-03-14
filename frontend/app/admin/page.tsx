@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
 import { Doughnut } from 'react-chartjs-2';
@@ -14,8 +14,9 @@ import {
   PointElement,
   LineElement,
 } from 'chart.js';
-import { Highlight, themes } from 'prism-react-renderer';
 import Link from 'next/link';
+import { Markdown } from '@/components/Markdown';
+import { getMarkdownNormalize } from '@/lib/utils';
 
 // Register ChartJS components
 ChartJS.register(
@@ -99,7 +100,6 @@ export default function AdminPanel() {
         credentials: 'include'
       });
       const data = await response.json();
-      console.error('Error checking admin status:', data);
       setIsAdmin(data.is_admin);
       if (!data.is_admin) {
         router.push('/');
@@ -274,23 +274,10 @@ export default function AdminPanel() {
     fetchUsers();
   };
 
-  const renderCodeWithHighlight = (code: string, language = 'python') => (
-    <Highlight theme={themes.nightOwl} code={code} language={language}>
-      {({ className, style, tokens, getLineProps, getTokenProps }) => (
-        <pre 
-          className={`${className} p-4 rounded overflow-x-auto border-2 border-gray-700`} 
-          style={style}
-        >
-          {tokens.map((line, i) => (
-            <div key={i} {...getLineProps({ line })}>
-              {line.map((token, key) => (
-                <span key={key} {...getTokenProps({ token })} />
-              ))}
-            </div>
-          ))}
-        </pre>
-      )}
-    </Highlight>
+  const renderCodeWithHighlight = (code: string, isFim: boolean) => (
+    <Markdown
+      value={getMarkdownNormalize(isFim, code)}
+    />
   );
 
   if (!isAdmin || loading) {
@@ -400,9 +387,8 @@ export default function AdminPanel() {
                 </thead>
                 <tbody>
                   {results.map((result) => (
-                    <>
-                      <tr 
-                        key={result.id} 
+                    <Fragment key={result.id}>
+                      <tr
                         className="border-b border-gray-700 cursor-pointer transition-colors"
                         onClick={() => setExpandedRow(expandedRow === result.id ? null : result.id)}
                       >
@@ -436,11 +422,11 @@ export default function AdminPanel() {
                       </tr>
                       {expandedRow === result.id && (
                         <tr>
-                          <td colSpan={5} className="p-4 bg-gray-900 border-b border-gray-700">
+                          <td colSpan={5} className="p-4 bg-gray-800 border-b border-gray-700">
                             <div className="space-y-6">
                               <div>
                                 <h3 className="font-semibold mb-2 text-white">Original Prompt</h3>
-                                {renderCodeWithHighlight(result.code_prefix)}
+                                {renderCodeWithHighlight(result.code_prefix, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
                               </div>
                               
                               <div>
@@ -452,7 +438,7 @@ export default function AdminPanel() {
                                     Completion (Base Model - Qwen/Qwen2.5-Coder-0.5B)
                                   </span>
                                 </h3>
-                                {renderCodeWithHighlight(result.base_completion)}
+                                {renderCodeWithHighlight(result.base_completion, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
                               </div>
 
                               <div>
@@ -464,13 +450,13 @@ export default function AdminPanel() {
                                     Completion (Fine-tuned Model - stacklok/Qwen2.5-Coder-0.5B-codegate)
                                   </span>
                                 </h3>
-                                {renderCodeWithHighlight(result.finetuned_completion)}
+                                {renderCodeWithHighlight(result.finetuned_completion, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
                               </div>
                             </div>
                           </td>
                         </tr>
                       )}
-                    </>
+                    </Fragment>
                   ))}
                 </tbody>
               </table>
@@ -639,24 +625,22 @@ export default function AdminPanel() {
                         <td className="p-2">{user.username}</td>
                         <td className="p-2">{user.admin == false ? "❌" : "✅"}</td>
                         <td className="p-2">
-                          <tr>
-                            <td className="px-0">{user.admin == false ?
-                                <button
-                                  onClick={() => grantAdmin(user.username)}
-                                  className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                                >
-                                  Grant Admin
-                                </button>
-                              :
-                                <button
-                                  onClick={() => revokeAdmin(user.username)}
-                                  className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 "
-                                >
-                                  Revoke Admin
-                                </button>
-                              }
-                            </td>
-                          </tr>
+                          <div className="px-0">{user.admin == false ?
+                              <button
+                                onClick={() => grantAdmin(user.username)}
+                                className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                              >
+                                Grant Admin
+                              </button>
+                            :
+                              <button
+                                onClick={() => revokeAdmin(user.username)}
+                                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 "
+                              >
+                                Revoke Admin
+                              </button>
+                            }
+                          </div>
                         </td>
                         <td className="p-2">
                           <button

@@ -1,4 +1,5 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { usePrevious } from "./usePrevious";
 
 export type SubmissionState = "idle" | "submitting" | "success";
 
@@ -22,6 +23,13 @@ export const useModels = ({
   const [isLoading, setIsLoading] = useState(false);
   const [modelAIsBase, setModelAIsBase] = useState<boolean | null>(null);
   const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
+  const prevExperimentId = usePrevious(experimentId)
+
+  useEffect(() => {
+    if(prevExperimentId !== experimentId) {
+      setResults(null)
+    }
+  }, [experimentId])
 
   const generate = useCallback(async () => {
     setIsLoading(true);
