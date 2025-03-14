@@ -11,7 +11,7 @@ from fastapi.responses import (
 import platform
 from authlib.integrations.starlette_client import OAuth
 from user_management import Session as UsersDBSession, User
-from models import Session as DBSession, ComparisonResult, Mode
+from models import Experiment, Session as DBSession, ComparisonResult, Mode
 import random
 from config import Config
 import secrets
@@ -259,14 +259,31 @@ async def submit_preference(request: Request):
     db_session = DBSession()
 
     try:
+        # Get the experiment_id string from the request
+        experiment_id_str = data.get("experimentId", None)
+        experiment = None
+        
+        if experiment_id_str:
+            # Look up the experiment in the database
+            experiment = db_session.query(Experiment).filter(
+                Experiment.experiment_id == experiment_id_str
+            ).first()
+            
+            # If it doesn't exist, create it
+            if not experiment:
+                experiment = Experiment(experiment_id=experiment_id_str)
+                db_session.add(experiment)
+                db_session.flush()  # Get the ID without committing
+        
         result = ComparisonResult(
             github_username=request.session["user"]["username"],
-            base_model_name=Config.BASE_MODEL_NAME,
-            finetuned_model_name=Config.FINETUNED_MODEL_NAME,
+            base_model_name=data.get("baseModelName", Config.FIM_BASE_MODEL_NAME),
+            finetuned_model_name=data.get("finetunedModelName", Config.FIM_FINETUNED_MODEL_NAME),
             preferred_model=data["preferredModel"],
-            code_prefix=data["codePrefix"],
+            code_prefix=data.get("codePrefix", ""),
             base_completion=data["baseCompletion"],
             finetuned_completion=data["finetunedCompletion"],
+            experiment_id=experiment.id if experiment else None
         )
 
         db_session.add(result)
@@ -278,6 +295,12 @@ async def submit_preference(request: Request):
     finally:
         db_session.close()
 
+
+@app.get("/api/config/experiments")
+async def get_experiments(request: Request):
+    if "user" not in request.session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    return {"experiments": list(Config.EXPERIMENTS.keys())}
 
 @app.get("/auth/login")
 async def github_login(request: Request, redirect_uri: str = Config.FRONTEND_URL):
@@ -372,6 +395,7 @@ async def get_results(
     page: int = Query(1, ge=1),
     per_page: int = Query(10, ge=1, le=100),
     search: Optional[str] = None,
+    experiment_id: Optional[str] = None,
 ):
     if "user" not in request.session or not is_admin(
         request.session["user"]["username"]
@@ -379,7 +403,11 @@ async def get_results(
         raise HTTPException(status_code=403, detail="Not authorized")
 
     db_session = DBSession()
-    query = db_session.query(ComparisonResult)
+    
+    # Join the ComparisonResult and Experiment tables
+    query = db_session.query(ComparisonResult, Experiment).outerjoin(
+        Experiment, ComparisonResult.experiment_id == Experiment.id
+    )
 
     if search:
         search = f"%{search}%"
@@ -390,12 +418,16 @@ async def get_results(
                 ComparisonResult.preferred_model.ilike(search),
             )
         )
+    
+    # Filter by experiment if specified
+    if experiment_id:
+        query = query.filter(Experiment.experiment_id == experiment_id)
 
     # Get total count for pagination
     total = query.count()
 
     # Get paginated results
-    results = (
+    query_results = (
         query.order_by(ComparisonResult.created_at.desc())
         .offset((page - 1) * per_page)
         .limit(per_page)
@@ -403,8 +435,9 @@ async def get_results(
     )
 
     # Convert results to dict with both completions
-    results = [
-        {
+    results = []
+    for r, exp in query_results:
+        result_dict = {
             "id": r.id,
             "github_username": r.github_username,
             "preferred_model": r.preferred_model,
@@ -412,6 +445,9 @@ async def get_results(
             "base_completion": r.base_completion,
             "finetuned_completion": r.finetuned_completion,
             "created_at": r.created_at.isoformat(),
+            "base_model_name": r.base_model_name,
+            "finetuned_model_name": r.finetuned_model_name,
+            "experiment_id": exp.experiment_id if exp else None,
             "completions": [
                 {
                     "model": "base",
@@ -425,8 +461,7 @@ async def get_results(
                 },
             ],
         }
-        for r in results
-    ]
+        results.append(result_dict)
 
     db_session.close()
 
@@ -458,7 +493,12 @@ async def get_stats(request: Request):
 
     db_session = DBSession()
 
-    # Get total counts for each model preference
+    # Get list of all experiments that have been used
+    experiment_records = db_session.query(Experiment).all()
+    
+    stats = []
+    
+    # Overall stats (across all experiments)
     base_count = (
         db_session.query(ComparisonResult)
         .filter(ComparisonResult.preferred_model == "base")
@@ -480,10 +520,9 @@ async def get_stats(request: Request):
     finetuned_percentage = (
         (finetuned_count / total_comparisons * 100) if total_comparisons > 0 else 0
     )
-
-    db_session.close()
-
-    return {
+    
+    stats.append({
+        "experiment_id": "all",
         "total_comparisons": total_comparisons,
         "model_preferences": [
             {
@@ -497,7 +536,54 @@ async def get_stats(request: Request):
                 "percentage": round(finetuned_percentage, 1),
             },
         ],
-    }
+    })
+    
+    # Get stats for each experiment
+    for experiment in experiment_records:
+        exp_base_count = (
+            db_session.query(ComparisonResult)
+            .filter(ComparisonResult.preferred_model == "base")
+            .filter(ComparisonResult.experiment_id == experiment.id)
+            .count()
+        )
+
+        exp_finetuned_count = (
+            db_session.query(ComparisonResult)
+            .filter(ComparisonResult.preferred_model == "finetuned")
+            .filter(ComparisonResult.experiment_id == experiment.id)
+            .count()
+        )
+
+        exp_total = exp_base_count + exp_finetuned_count
+
+        # Calculate percentages
+        exp_base_percentage = (
+            (exp_base_count / exp_total * 100) if exp_total > 0 else 0
+        )
+        exp_finetuned_percentage = (
+            (exp_finetuned_count / exp_total * 100) if exp_total > 0 else 0
+        )
+        
+        stats.append({
+            "experiment_id": experiment.experiment_id,  # Use the string ID from the experiment table
+            "total_comparisons": exp_total,
+            "model_preferences": [
+                {
+                    "model": "base",
+                    "count": exp_base_count,
+                    "percentage": round(exp_base_percentage, 1),
+                },
+                {
+                    "model": "finetuned",
+                    "count": exp_finetuned_count,
+                    "percentage": round(exp_finetuned_percentage, 1),
+                },
+            ],
+        })
+
+    db_session.close()
+
+    return {"stats": stats}
 
 
 @app.get("/api/analytics/performance")

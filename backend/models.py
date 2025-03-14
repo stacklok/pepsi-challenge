@@ -1,11 +1,26 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
 from enum import Enum
 
 Base = declarative_base()
 
+# New table for experiments
+class Experiment(Base):
+    __tablename__ = 'experiments'
+
+    id = Column(Integer, primary_key=True)
+    experiment_id = Column(String, nullable=False, unique=True)  # e.g., "FIM_CODEGATE"
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationship to comparison results
+    comparisons = relationship("ComparisonResult", back_populates="experiment")
+    
+    def __repr__(self):
+        return f"<Experiment {self.experiment_id}>"
+
+# Existing ComparisonResult table with a link to experiments
 class ComparisonResult(Base):
     __tablename__ = 'comparison_results'
 
@@ -18,6 +33,10 @@ class ComparisonResult(Base):
     base_completion = Column(Text, nullable=False)
     finetuned_completion = Column(Text, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Foreign key to experiments table
+    experiment_id = Column(Integer, ForeignKey('experiments.id'), nullable=True)
+    experiment = relationship("Experiment", back_populates="comparisons")
 
     @classmethod
     def get_preference_stats(cls, session):

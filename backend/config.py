@@ -26,7 +26,6 @@ class Config:
     CHAT_BASE_MODEL_NAME = "Qwen/Qwen2.5-Coder-7B-Instruct"
     CHAT_FINETUNED_MODEL_NAME = "stacklok/Qwen2.5-Coder-7B-Instruct-codegate-chat"
 
-
     # Frontend URL
     FRONTEND_URL = os.getenv('FRONTEND_URL', 'https://acme.com')
 
@@ -43,3 +42,14 @@ class Config:
     GITHUB_CALLBACK_URL = os.getenv('GITHUB_CALLBACK_URL', f"{BACKEND_URL}/auth/callback")
 
     LOCAL_ENV = os.getenv('LOCAL_ENV', False)
+
+    EXPERIMENTS = {
+        "FIM_CODEGATE": {
+            "base": FIM_BASE_MODEL_NAME,
+            "fineTuned": FIM_FINETUNED_MODEL_NAME
+        },
+        "CHAT_CODEGATE": {
+            "base": CHAT_BASE_MODEL_NAME,
+            "fineTuned": CHAT_FINETUNED_MODEL_NAME
+        }
+    }

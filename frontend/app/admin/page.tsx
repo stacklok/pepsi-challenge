@@ -35,6 +35,7 @@ interface ComparisonResult {
   code_prefix: string;
   base_completion: string;
   finetuned_completion: string;
+  experiment_id: string | null;
   created_at: string;
   completions: Array<{
     model: string;
@@ -49,13 +50,18 @@ interface User {
   admin: boolean;
 }
 
-interface Stats {
+interface Stat {
+  experiment_id: string; // Could be "all" or a specific experiment ID
   total_comparisons: number;
   model_preferences: Array<{
     model: string;
     count: number;
     percentage: number;
   }>;
+}
+
+interface Stats {
+  stats: Stat[];
 }
 
 export default function AdminPanel() {
@@ -291,14 +297,7 @@ export default function AdminPanel() {
     return <div className="flex justify-center p-8">Loading...</div>;
   }
 
-  const chartData = stats ? {
-    labels: stats.model_preferences.map(p => p.model === 'base' ? 'Base Model' : 'Finetuned Model'),
-    datasets: [{
-      data: stats.model_preferences.map(p => p.count),
-      backgroundColor: ['#4F46E5', '#10B981'],
-      borderWidth: 0
-    }]
-  } : null;
+  const overallStat = stats?.stats.find(stat => stat.experiment_id === "all");
 
   return (
     <div className="container mx-auto p-6">
@@ -328,9 +327,9 @@ export default function AdminPanel() {
           <h2 className="text-lg font-semibold mb-4">Summary</h2>
           <div className="space-y-2">
             <p className="font-bold text-white">
-              Total Comparisons: {stats?.total_comparisons || 0}
+              Total Comparisons: {overallStat?.total_comparisons || 0}
             </p>
-            {stats?.model_preferences.map((pref) => (
+            {overallStat?.model_preferences?.map((pref) => (
               <p 
                 key={pref.model} 
                 className={`font-bold ${
@@ -351,9 +350,16 @@ export default function AdminPanel() {
         <Card className="p-6 md:col-span-2">
           <h2 className="text-lg font-semibold mb-4">Model Preferences</h2>
           <div className="h-48">
-            {chartData && (
+            {overallStat && (
               <Doughnut
-                data={chartData}
+                data={{
+                  labels: overallStat.model_preferences?.map(p => p.model === 'base' ? 'Base Model' : 'Finetuned Model'),
+                  datasets: [{
+                    data: overallStat.model_preferences?.map(p => p.count),
+                    backgroundColor: ['#4F46E5', '#10B981'],
+                    borderWidth: 0
+                  }]
+                }}
                 options={{
                   responsive: true,
                   maintainAspectRatio: false
@@ -388,6 +394,7 @@ export default function AdminPanel() {
                     <th className="text-left p-2">User</th>
                     <th className="text-left p-2">Preferred Model</th>
                     <th className="text-left p-2">Prompt</th>
+                    <th className="text-left p-2">Experiment</th>
                     <th className="text-left p-2">Created At</th>
                   </tr>
                 </thead>
@@ -413,6 +420,9 @@ export default function AdminPanel() {
                           <code className="text-sm">{result.code_prefix.substring(0, 50)}...</code>
                         </td>
                         <td className="p-2">
+                          {result?.experiment_id ?? 'N/A'}
+                        </td>
+                        <td className="p-2">
                           {new Date(result.created_at).toLocaleString('en-GB', {
                             day: '2-digit',
                             month: '2-digit',
@@ -426,7 +436,7 @@ export default function AdminPanel() {
                       </tr>
                       {expandedRow === result.id && (
                         <tr>
-                          <td colSpan={4} className="p-4 bg-gray-900 border-b border-gray-700">
+                          <td colSpan={5} className="p-4 bg-gray-900 border-b border-gray-700">
                             <div className="space-y-6">
                               <div>
                                 <h3 className="font-semibold mb-2 text-white">Original Prompt</h3>
@@ -493,6 +503,52 @@ export default function AdminPanel() {
             </div>
           )}
         </Card>
+        {stats?.stats.length > 1 && (
+          <Card className="p-6">
+            <h2 className="text-lg font-semibold mb-4">Experiment Breakdown</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left p-2">Experiment</th>
+                    <th className="text-left p-2">Total</th>
+                    <th className="text-left p-2">Base Model</th>
+                    <th className="text-left p-2">Finetuned Model</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.stats
+                    .filter(stat => stat.experiment_id !== "all")
+                    .map((stat) => {
+                      const basePreference = stat.model_preferences.find(p => p.model === 'base');
+                      const finetunedPreference = stat.model_preferences.find(p => p.model === 'finetuned');
+                      
+                      return (
+                        <tr key={stat.experiment_id} className="border-b border-gray-700">
+                          <td className="p-2">{stat.experiment_id}</td>
+                          <td className="p-2">{stat.total_comparisons}</td>
+                          <td className="p-2">
+                            {basePreference ? (
+                              <span className={`${basePreference.percentage > 50 ? 'text-green-400' : 'text-gray-400'}`}>
+                                {basePreference.count} ({basePreference.percentage}%)
+                              </span>
+                            ) : '0 (0%)'}
+                          </td>
+                          <td className="p-2">
+                            {finetunedPreference ? (
+                              <span className={`${finetunedPreference.percentage > 50 ? 'text-green-400' : 'text-gray-400'}`}>
+                                {finetunedPreference.count} ({finetunedPreference.percentage}%)
+                              </span>
+                            ) : '0 (0%)'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
         
         {/* User Management Table */}
         <Card className="p-6">
