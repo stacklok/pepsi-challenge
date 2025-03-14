@@ -100,3 +100,7 @@ body {
     rgb(var(--background-end-rgb))
   );
 } 
+
+.markdown-body.ov {
+  background: transparent;
+}
