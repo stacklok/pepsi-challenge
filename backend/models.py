@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, DateTime, Text, ForeignKey
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 from datetime import datetime
@@ -11,7 +11,7 @@ class Experiment(Base):
     __tablename__ = 'experiments'
 
     id = Column(Integer, primary_key=True)
-    experiment_id = Column(String, nullable=False, unique=True)  # e.g., "FIM_CODEGATE"
+    experiment_id = Column(String, nullable=False, unique=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship to comparison results
@@ -58,7 +58,7 @@ class ComparisonResult(Base):
             "base_percentage": (base_count / total * 100) if total > 0 else 0,
             "finetuned_percentage": (finetuned_count / total * 100) if total > 0 else 0
         }
-
+                
 # Create database and tables
 engine = create_engine('sqlite:///comparisons.db')
 Base.metadata.create_all(engine)
