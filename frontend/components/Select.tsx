@@ -32,7 +32,6 @@ export function Select({
   ...props
 }: SelectProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [selectedValue, setSelectedValue] = useState(value);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,13 +51,12 @@ export function Select({
   }, []);
 
   function handleSelect(option: SelectOption) {
-    setSelectedValue(option.value);
     onChange?.(option.value);
     setIsOpen(false);
   }
 
   const selectedOption = options.find(
-    (option) => option.value === selectedValue
+    (option) => option.value === value
   );
 
   return (
@@ -89,7 +87,7 @@ export function Select({
               key={option.value}
               className={cn(
                 "px-4 py-2 text-sm cursor-pointer hover:bg-gray-700",
-                option.value === selectedValue &&
+                option.value === value &&
                   "bg-blue-600 hover:bg-blue-700"
               )}
               onClick={() => handleSelect(option)}
