@@ -11,7 +11,7 @@ class Experiment(Base):
     __tablename__ = 'experiments'
 
     id = Column(Integer, primary_key=True)
-    experiment_id = Column(String, nullable=False, unique=False)
+    experiment_id = Column(String, nullable=False, unique=True)
     created_at = Column(DateTime, default=datetime.timezone.utc)
     
     # Relationship to comparison results
