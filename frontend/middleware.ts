@@ -13,7 +13,16 @@ export function middleware(request: NextRequest) {
   // Proxy auth and api requests to backend
   if (path.startsWith('/auth') || path.startsWith('/api')) {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
-    return NextResponse.rewrite(new URL(path, backendUrl))
+    
+    // Create the URL for rewriting
+    const url = new URL(path, backendUrl)
+    
+    // Preserve all query parameters from the original request
+    request.nextUrl.searchParams.forEach((value, key) => {
+      url.searchParams.set(key, value)
+    })
+    
+    return NextResponse.rewrite(url)
   }
 
   return NextResponse.next()
@@ -25,4 +34,4 @@ export const config = {
     '/api/:path*',
     '/error',
   ],
-} 
+}

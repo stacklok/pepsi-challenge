@@ -5,7 +5,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import (
     RedirectResponse,
     JSONResponse,
-    FileResponse,
     StreamingResponse,
 )
 import platform
@@ -18,7 +17,7 @@ import secrets
 from starlette.middleware.sessions import SessionMiddleware
 from typing import Optional
 from sqlalchemy import or_, select
-import os
+from migration import migrate_database
 import csv
 import io
 import json
@@ -33,6 +32,9 @@ logger = logging.getLogger(__name__)
 
 
 app = FastAPI()
+
+# TODO: remove this and implement a migration system
+migrate_database()
 
 # Session configuration
 app.add_middleware(

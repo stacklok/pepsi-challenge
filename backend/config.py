@@ -43,6 +43,7 @@ class Config:
 
     LOCAL_ENV = os.getenv('LOCAL_ENV', False)
 
+    # Active Experiments
     EXPERIMENTS = {
         "FIM_CODEGATE": {
             "base": FIM_BASE_MODEL_NAME,
@@ -51,5 +52,13 @@ class Config:
         "CHAT_CODEGATE": {
             "base": CHAT_BASE_MODEL_NAME,
             "fineTuned": CHAT_FINETUNED_MODEL_NAME
+        }
+    }
+    
+    OLD_EXPERIMENTS = {
+        #Before we introduce the experiments id and the chat models
+        "FIM_LEGACY_CODEGATE": {
+            "base": "Qwen/Qwen2.5-Coder-0.5B",
+            "fineTuned": "stacklok/Qwen2.5-Coder-0.5B-curriculum-codegate"
         }
     }
