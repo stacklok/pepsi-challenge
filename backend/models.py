@@ -12,7 +12,7 @@ class Experiment(Base):
 
     id = Column(Integer, primary_key=True)
     experiment_id = Column(String, nullable=False, unique=True)
-    created_at = Column(DateTime, default=datetime.timezone.utc)
+    created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationship to comparison results
     comparisons = relationship("ComparisonResult", back_populates="experiment")
