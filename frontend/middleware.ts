@@ -11,7 +11,9 @@ export function middleware(request: NextRequest) {
   }
 
   // Proxy auth and api requests to backend
-  if (path.startsWith('/auth') || path.startsWith('/api')) {
+  const isInternalAPI = path.startsWith('/api/chat') || path.startsWith('/api/completion');
+
+  if (path.startsWith('/auth') || path.startsWith('/api') || !isInternalAPI) {
     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000'
     
     // Create the URL for rewriting

@@ -2,21 +2,23 @@
 
 import React, { useState, useEffect } from "react";
 import CodeComparison from "../components/CodeComparison";
-import UserAvatar from "../components/UserAvatar";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { Chat } from "@/components/code-generation/Chat";
 import { Fim } from "@/components/code-generation/Fim";
 import { useModels } from "@/hooks/useModels";
 import { ExperimentSelector } from "@/components/ExperimentSelector";
+import { Header } from "@/components/Header";
+import { Card } from "@/components/ui/card";
+import { useUser } from "@/hooks/useUser";
 
 export default function Home() {
   const [prefix, setPrefix] = useState("");
   const [suffix, setSuffix] = useState("");
   const [isSuffixVisible, setIsSuffixVisible] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [prompt, setPrompt] = useState("");
   const [preferredModel, setPreferredModel] = useState<"A" | "B" | null>(null);
   const [experimentId, setExperimentId] = useState<string | undefined>();
+  const user = useUser();
   const { 
     results,
     isLoading,
@@ -53,20 +55,6 @@ export default function Home() {
     window.location.href = "/auth/login";
   };
 
-  // Only check user status once when component mounts
-  useEffect(() => {
-    fetch("/auth/user", {
-      credentials: "include",
-    })
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.username) {
-          setUser(data);
-        }
-      })
-      .catch(console.error);
-  }, []);
-
   const renderExperimentContent = () => {
     if (!experimentId) return null;
     return experimentId?.includes('CHAT') ? (
@@ -85,7 +73,7 @@ export default function Home() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <button
           onClick={handleLogin}
           className="px-8 py-3 bg-gradient-to-r from-blue-500 to-purple-600 text-white font-medium rounded-lg
@@ -98,19 +86,12 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 text-white">
+    <div className="min-h-screen">
       {/* Header */}
-      <header className="border-b border-gray-700">
-        <div className="max-w-7xl mx-auto py-6 px-4 flex justify-between items-center">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-            🥤 LLM Pepsi Challenge
-          </h1>
-          <UserAvatar user={user} />
-        </div>
-      </header>
+      <Header user={user} />
       <main className="max-w-7xl mx-auto py-8 px-4 flex flex-col gap-8">
         {/* Input Section */}
-        <div className="bg-gray-800 rounded-xl border border-gray-700 shadow-xl p-6">
+        <Card className="p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <ExperimentSelector value={experimentId} onChange={setExperimentId} />
             {renderExperimentContent()}
@@ -152,7 +133,7 @@ export default function Home() {
               )}
             </button>
           </form>
-        </div>
+        </Card>
 
         {/* Results Section */}
         {results && (

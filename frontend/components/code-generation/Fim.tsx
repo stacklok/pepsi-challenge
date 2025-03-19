@@ -1,3 +1,5 @@
+import { Textarea } from "../ui/textarea";
+
 interface Props {
   prefix: string;
   suffix: string;
@@ -20,16 +22,14 @@ export function Fim({
       <div>
         <label
           htmlFor="code-input"
-          className="block text-lg font-medium text-gray-200 mb-2"
+          className="block text-lg font-medium mb-2"
         >
           Enter your code snippet
         </label>
-        <textarea
+        <Textarea
           id="code-input"
           value={prefix}
           onChange={(e) => setPrefix(e.target.value)}
-          className="w-full h-48 p-4 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm text-gray-100
-                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
           placeholder="def main():"
         />
       </div>

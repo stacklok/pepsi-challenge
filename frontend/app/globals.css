@@ -2,105 +2,103 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Prism.js customization */
-code[class*="language-"],
-pre[class*="language-"] {
-  color: #f8f8f2;
-  background: none;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  text-align: left;
-  white-space: pre;
-  word-spacing: normal;
-  word-break: normal;
-  word-wrap: normal;
-  line-height: 1.5;
-  tab-size: 4;
-  hyphens: none;
+@layer base {
+  :root {
+    --background: 220 30% 15%;
+    --foreground: 0 0% 100%;
+    --card: 220 20% 20%;
+    --card-foreground: 0 0% 95%;
+    --popover: 220 30% 20%;
+    --popover-foreground: 0 0% 90%;
+    --primary: 271 81% 55%;
+    --primary-foreground: 0 100% 97%;
+    --secondary: 140 30% 50%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 220 30% 25%;
+    --muted-foreground: 220 40% 75%;
+    --accent: 271 100% 40%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 360 70% 40%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 270 30% 40%;
+    --input: 220 20% 30%;
+    --ring: 271 100% 50%;
+    --chart-1: 270 91% 65%;
+    --chart-2: 140 30% 50%;
+    --chart-3: 271 100% 48%;
+    --chart-4: 360 70% 40%;
+    --chart-5: 220 30% 35%;
+  
+    --pepsi-blue: 217, 91%, 55%; /* Tailwind blue-500 (#3B82F6) */
+    --pepsi-blue-light: 217, 91%, 65%; /* Tailwind blue-400 (#60A5FA) */
+
+    --radius: 0.5rem;
+  }
+  
+  .light {
+    --background: 0 0% 98%;
+    --foreground: 220 20% 20%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 15%;
+    --popover: 0 0% 95%;
+    --popover-foreground: 220 20% 25%;
+    --input-code: 220 20% 25%;
+    --primary: 271 76% 63.02%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 140 50% 60%;
+    --secondary-foreground: 0 0% 15%;
+    --muted: 0 0% 95%;
+    --muted-foreground: 220 20% 45%;
+    --accent: 271 81% 55%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 360 70% 50%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 90%;
+    --input: 0 0% 80%;
+    --ring: 271 100% 72.75%;
+    --chart-1: 271 100% 64.75%;
+    --chart-2: 140 50% 60%;
+    --chart-3: 271 42% 51.12%;
+    --chart-4: 360 70% 50%;
+    --chart-5: 220 20% 40%;
+
+    --pepsi-blue: 217, 91%, 55%; /* Tailwind blue-500 (#3B82F6) */
+    --pepsi-blue-dark: 217, 91%, 45%; /* Tailwind blue-700 (#2563EB) */
+
+    --radius: 0.5rem;
+  }
+
+  * {
+    border-color: hsl(var(--border)); /* Ensures proper application */
+  }
+}
+ 
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt";
+  }
 }
 
-/* Token colors */
-.token.comment,
-.token.prolog,
-.token.doctype,
-.token.cdata {
-  color: #6272a4;
+/* Component customizations */
+.codegate-input {
+  @apply bg-muted border-input text-foreground focus-visible:ring-pepsi-blue;
 }
 
-.token.punctuation {
-  color: #f8f8f2;
+.compare-button {
+  @apply bg-[hsl(var(--pepsi-blue))] hover:bg-[hsl(var(--pepsi-blue-light))] text-white font-medium;
 }
 
-.token.namespace {
-  opacity: .7;
-}
-
-.token.property,
-.token.tag,
-.token.constant,
-.token.symbol,
-.token.deleted {
-  color: #ff79c6;
-}
-
-.token.boolean,
-.token.number {
-  color: #bd93f9;
-}
-
-.token.selector,
-.token.attr-name,
-.token.string,
-.token.char,
-.token.builtin,
-.token.inserted {
-  color: #50fa7b;
-}
-
-.token.operator,
-.token.entity,
-.token.url,
-.language-css .token.string,
-.style .token.string,
-.token.variable {
-  color: #f8f8f2;
-}
-
-.token.atrule,
-.token.attr-value,
-.token.function,
-.token.class-name {
-  color: #f1fa8c;
-}
-
-.token.keyword {
-  color: #ff79c6;
-}
-
-.token.regex,
-.token.important {
-  color: #ffb86c;
-}
-
-.token.important,
-.token.bold {
-  font-weight: bold;
+.light .compare-button {
+  @apply hover:bg-[hsl(var(--pepsi-blue-dark))];
 }
 
 :root {
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 17, 24, 39;
   --background-end-rgb: 0, 0, 0;
-}
-
-body {
-  color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-    to bottom,
-    rgb(var(--background-start-rgb)),
-    rgb(var(--background-end-rgb))
-  );
 } 
 
 .markdown-body.ov {
   background: transparent;
-}
+}  

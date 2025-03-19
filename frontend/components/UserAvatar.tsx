@@ -7,13 +7,10 @@ type UserAvatarProps = {
   user: {
     username: string;
     avatar_url: string;
-  } | null;
+  };
 };
 
 export default function UserAvatar({ user }: UserAvatarProps) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const [showDropdown, setShowDropdown] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   const handleLogout = () => {
