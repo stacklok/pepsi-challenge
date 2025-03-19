@@ -6,7 +6,11 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "biome lint",
+    "check": "biome check",
+    "format": "biome format",
+    "lint:fix": "biome lint --write .",
+    "format:fix": "biome format --write ."
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
@@ -39,6 +43,7 @@
     "typescript": "^5"
   },
   "devDependencies": {
+    "@biomejs/biome": "1.9.4",
     "@types/node": "20.17.23",
     "@types/react": "19.0.10",
     "@types/react-dom": "19.0.4",

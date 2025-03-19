@@ -1,4 +1,4 @@
-import { Textarea } from "../ui/textarea";
+import { Textarea } from '../ui/textarea';
 
 interface Props {
   prefix: string;
@@ -20,10 +20,7 @@ export function Fim({
   return (
     <>
       <div>
-        <label
-          htmlFor="code-input"
-          className="block text-lg font-medium mb-2"
-        >
+        <label htmlFor="code-input" className="block text-lg font-medium mb-2">
           Enter your code snippet
         </label>
         <Textarea
@@ -43,24 +40,22 @@ export function Fim({
         </button>
       </div>
       {isSuffixVisible && (
-        <>
-          <div>
-            <label
-              htmlFor="code-suffix"
-              className="block text-lg font-medium text-gray-200 mb-2"
-            >
-              Enter your code suffix
-            </label>
-            <textarea
-              id="code-suffix"
-              value={suffix}
-              onChange={(e) => setSuffix(e.target.value)}
-              className="w-full h-48 p-4 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm text-gray-100
-                    focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
-              placeholder="print('Hello, World!')"
-            />
-          </div>
-        </>
+        <div>
+          <label
+            htmlFor="code-suffix"
+            className="block text-lg font-medium text-gray-200 mb-2"
+          >
+            Enter your code suffix
+          </label>
+          <textarea
+            id="code-suffix"
+            value={suffix}
+            onChange={(e) => setSuffix(e.target.value)}
+            className="w-full h-48 p-4 bg-gray-900 border border-gray-700 rounded-lg font-mono text-sm text-gray-100
+                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-500"
+            placeholder="print('Hello, World!')"
+          />
+        </div>
       )}
     </>
   );

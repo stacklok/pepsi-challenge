@@ -1,5 +1,5 @@
-import { ThemeToggle } from "./ThemeToggle";
-import UserAvatar from "./UserAvatar"
+import { ThemeToggle } from './ThemeToggle';
+import UserAvatar from './UserAvatar';
 
 type HeaderProps = {
   user: {
@@ -21,5 +21,5 @@ export const Header = ({ user }: HeaderProps) => {
         </div>
       </div>
     </header>
-  )
-}
+  );
+};

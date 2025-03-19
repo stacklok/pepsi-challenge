@@ -10,8 +10,6 @@ export default function SnippetLibrary() {
   ]);
 
   return (
-    <div className="grid grid-cols-3 gap-4">
-      {/* Render snippet cards */}
-    </div>
+    <div className="grid grid-cols-3 gap-4">{/* Render snippet cards */}</div>
   );
-} 
+}

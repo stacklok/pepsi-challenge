@@ -29,9 +29,9 @@ export default function Dashboard() {
     const fetchStats = async () => {
       try {
         const response = await fetch('/api/user/stats', {
-          credentials: 'include'
+          credentials: 'include',
         });
-        
+
         if (response.ok) {
           const data = await response.json();
           setUserStats(data);
@@ -58,17 +58,19 @@ export default function Dashboard() {
 
   const chartData = {
     labels: ['Base Model', 'Finetuned Model'],
-    datasets: [{
-      data: [userStats.preferences.base, userStats.preferences.finetuned],
-      backgroundColor: ['#4F46E5', '#10B981'],
-      borderWidth: 0
-    }]
+    datasets: [
+      {
+        data: [userStats.preferences.base, userStats.preferences.finetuned],
+        backgroundColor: ['#4F46E5', '#10B981'],
+        borderWidth: 0,
+      },
+    ],
   };
 
   return (
     <div className="container mx-auto p-6">
       <h1 className="text-2xl font-bold mb-6">Your Dashboard</h1>
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* Total Comparisons Card */}
         <Card className="p-6">
@@ -82,11 +84,11 @@ export default function Dashboard() {
         <Card className="p-6 col-span-2">
           <h2 className="text-lg font-semibold mb-4">Your Model Preferences</h2>
           <div className="h-64">
-            <Doughnut 
+            <Doughnut
               data={chartData}
               options={{
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
               }}
             />
           </div>
@@ -97,23 +99,25 @@ export default function Dashboard() {
           <h2 className="text-lg font-semibold mb-4">Recent Activity</h2>
           <div className="space-y-4">
             {userStats.recent_comparisons.map((comparison) => (
-              <div 
-                key={comparison.id}
-                className="border-b pb-4 last:border-0"
-              >
+              <div key={comparison.id} className="border-b pb-4 last:border-0">
                 <div className="flex justify-between items-start">
                   <div>
                     <p className="font-mono text-sm text-gray-600">
                       {comparison.code_prefix}
                     </p>
                     <p className="text-sm mt-1">
-                      Preferred: <span className="font-semibold">
-                        {comparison.preferred_model === 'base' ? 'Base Model' : 'Finetuned Model'}
+                      Preferred:{' '}
+                      <span className="font-semibold">
+                        {comparison.preferred_model === 'base'
+                          ? 'Base Model'
+                          : 'Finetuned Model'}
                       </span>
                     </p>
                   </div>
                   <span className="text-sm text-gray-500">
-                    {formatDistanceToNow(new Date(comparison.created_at), { addSuffix: true })}
+                    {formatDistanceToNow(new Date(comparison.created_at), {
+                      addSuffix: true,
+                    })}
                   </span>
                 </div>
               </div>
@@ -123,4 +127,4 @@ export default function Dashboard() {
       </div>
     </div>
   );
-} 
+}

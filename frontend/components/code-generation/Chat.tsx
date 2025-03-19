@@ -1,4 +1,4 @@
-import { Input } from "../ui/input";
+import { Input } from '../ui/input';
 
 interface Props {
   prompt: string;
@@ -8,10 +8,7 @@ interface Props {
 export function Chat({ prompt, setPrompt }: Props) {
   return (
     <div className="my-2">
-      <label
-        htmlFor="chat-code-gen"
-        className="block text-lg font-medium mb-2"
-      >
+      <label htmlFor="chat-code-gen" className="block text-lg font-medium mb-2">
         Enter your prompt for code generation
       </label>
 
