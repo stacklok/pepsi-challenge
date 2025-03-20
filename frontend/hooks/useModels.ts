@@ -1,19 +1,19 @@
-import { useCallback, useEffect, useState } from "react";
-import { usePrevious } from "./usePrevious";
+import { useCallback, useEffect, useState } from 'react';
+import { usePrevious } from './usePrevious';
 
-export type SubmissionState = "idle" | "submitting" | "success";
+export type SubmissionState = 'idle' | 'submitting' | 'success';
 
 export const useModels = ({
   prompt,
   prefix,
   suffix,
   preferredModel,
-  experimentId
+  experimentId,
 }: {
   prompt: string;
   prefix: string;
   suffix: string;
-  preferredModel: "A" | "B" | null;
+  preferredModel: 'A' | 'B' | null;
   experimentId?: string;
 }) => {
   const [results, setResults] = useState<{
@@ -22,14 +22,15 @@ export const useModels = ({
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [modelAIsBase, setModelAIsBase] = useState<boolean | null>(null);
-  const [submissionState, setSubmissionState] = useState<SubmissionState>("idle");
-  const prevExperimentId = usePrevious(experimentId)
+  const [submissionState, setSubmissionState] =
+    useState<SubmissionState>('idle');
+  const prevExperimentId = usePrevious(experimentId);
 
   useEffect(() => {
-    if(prevExperimentId !== experimentId) {
-      setResults(null)
+    if (prevExperimentId !== experimentId) {
+      setResults(null);
     }
-  }, [experimentId])
+  }, [experimentId, prevExperimentId]);
 
   const generate = useCallback(async () => {
     setIsLoading(true);
@@ -37,21 +38,21 @@ export const useModels = ({
     let body = prompt
       ? `prompt=${encodeURIComponent(prompt)}&mode=chat`
       : `prefix=${encodeURIComponent(prefix)}&suffix=${encodeURIComponent(suffix)}&mode=fim`;
-    
+
     if (experimentId) {
       body += `&experiment_id=${encodeURIComponent(experimentId)}`;
     }
-  
+
     try {
-      const response = await fetch("/api/generate", {
-        method: "POST",
+      const response = await fetch('/api/generate', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/x-www-form-urlencoded",
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
-        credentials: "include",
+        credentials: 'include',
         body,
       });
-  
+
       const data = await response.json();
       setModelAIsBase(data.modelAIsBase);
       setResults({
@@ -59,7 +60,7 @@ export const useModels = ({
         finetunedResponse: data.modelAIsBase ? data.modelB : data.modelA,
       });
     } catch (error) {
-      console.error("Error:", error);
+      console.error('Error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -67,25 +68,25 @@ export const useModels = ({
 
   const submitPreference = useCallback(async () => {
     if (!results || preferredModel === null || modelAIsBase === null) {
-      console.error("Cannot submit preference: missing required data");
+      console.error('Cannot submit preference: missing required data');
       return;
     }
 
-    setSubmissionState("submitting");
+    setSubmissionState('submitting');
 
     const preferredModelType =
-      (preferredModel === "A" && modelAIsBase) ||
-      (preferredModel === "B" && !modelAIsBase)
-        ? "base"
-        : "finetuned";
+      (preferredModel === 'A' && modelAIsBase) ||
+      (preferredModel === 'B' && !modelAIsBase)
+        ? 'base'
+        : 'finetuned';
 
     try {
-      await fetch("/api/submit-preference", {
-        method: "POST",
+      await fetch('/api/submit-preference', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
-        credentials: "include",
+        credentials: 'include',
         body: JSON.stringify({
           preferredModel: preferredModelType,
           codePrefix: prefix || prompt,
@@ -95,18 +96,17 @@ export const useModels = ({
         }),
       });
 
-      setSubmissionState("success");
+      setSubmissionState('success');
 
       // Reset form after 2 seconds
       setTimeout(() => {
         setResults(null);
         setModelAIsBase(null);
-        setSubmissionState("idle");
+        setSubmissionState('idle');
       }, 2000);
-
     } catch (error) {
-      console.error("Error submitting preference:", error);
-      setSubmissionState("idle");
+      console.error('Error submitting preference:', error);
+      setSubmissionState('idle');
     }
   }, [preferredModel, modelAIsBase, results, prefix, prompt, experimentId]);
 
@@ -117,6 +117,6 @@ export const useModels = ({
     submissionState,
     preferredModel,
     generate,
-    submitPreference
+    submitPreference,
   };
 };

@@ -6,7 +6,8 @@ import Link from 'next/link';
 
 function AuthErrorContent() {
   const searchParams = useSearchParams();
-  const message = searchParams.get('message') || 'An authentication error occurred';
+  const message =
+    searchParams.get('message') || 'An authentication error occurred';
   const type = searchParams.get('type');
 
   return (
@@ -14,13 +15,15 @@ function AuthErrorContent() {
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 space-y-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-red-600 mb-2">
-            {type === 'access_denied' ? 'Access Denied' : 'Authentication Error'}
+            {type === 'access_denied'
+              ? 'Access Denied'
+              : 'Authentication Error'}
           </h2>
           <p className="text-gray-600 mb-6">{message}</p>
         </div>
-        
+
         <div className="flex justify-center">
-          <Link 
+          <Link
             href="/"
             className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded transition-colors"
           >
@@ -44,4 +47,4 @@ export default function AuthErrorPage() {
       <AuthErrorContent />
     </Suspense>
   );
-} 
+}

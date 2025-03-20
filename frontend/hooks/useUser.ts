@@ -1,12 +1,13 @@
-import { useState, useEffect } from "react";
+import type { User } from '@/types/user';
+import { useState, useEffect } from 'react';
 
 export const useUser = () => {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User>(null);
 
   // Only check user status once when component mounts
   useEffect(() => {
-    fetch("/auth/user", {
-      credentials: "include",
+    fetch('/auth/user', {
+      credentials: 'include',
     })
       .then((res) => res.json())
       .then((data) => {
@@ -17,5 +18,5 @@ export const useUser = () => {
       .catch(console.error);
   }, []);
 
-  return user
-}
+  return user;
+};

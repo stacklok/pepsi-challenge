@@ -6,7 +6,8 @@ import { Suspense } from 'react';
 
 function ErrorContent() {
   const searchParams = useSearchParams();
-  const message = searchParams.get('message') || 'An authentication error occurred';
+  const message =
+    searchParams.get('message') || 'An authentication error occurred';
   const type = searchParams.get('type');
 
   return (
@@ -14,7 +15,9 @@ function ErrorContent() {
       <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 space-y-4">
         <div className="text-center">
           <h2 className="text-2xl font-bold text-red-600 mb-2">
-            {type === 'access_denied' ? 'Access Denied' : 'Authentication Error'}
+            {type === 'access_denied'
+              ? 'Access Denied'
+              : 'Authentication Error'}
           </h2>
           <p className="text-gray-600 mb-6">{message}</p>
         </div>

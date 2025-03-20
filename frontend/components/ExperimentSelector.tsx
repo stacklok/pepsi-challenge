@@ -1,6 +1,12 @@
-import { FC, useEffect } from "react";
-import { useExperiments } from "../hooks/useExperiments";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { type FC, useEffect } from 'react';
+import { useExperiments } from '../hooks/useExperiments';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 
 interface ExperimentSelectorProps {
   value: string | undefined;
@@ -16,17 +22,21 @@ export const ExperimentSelector: FC<ExperimentSelectorProps> = ({
   autoSelect = true,
 }) => {
   const { options, isLoading, error } = useExperiments();
-  
+
   useEffect(() => {
     if (autoSelect && !value && options.length > 0 && !disabled) {
       onChange(options[0].value);
     }
   }, [autoSelect, value, options, disabled, onChange]);
-  
+
   if (error) {
-    return <div className="text-red-500 text-sm">Failed to load experiments: {error}</div>;
+    return (
+      <div className="text-red-500 text-sm">
+        Failed to load experiments: {error}
+      </div>
+    );
   }
-  
+
   return (
     <div className="mb-4">
       <label
@@ -35,13 +45,23 @@ export const ExperimentSelector: FC<ExperimentSelectorProps> = ({
       >
         Choose your experiments
       </label>
-      <Select disabled={disabled || isLoading || options.length === 0} onValueChange={onChange} value={value ?? ''} >
+      <Select
+        disabled={disabled || isLoading || options.length === 0}
+        onValueChange={onChange}
+        value={value ?? ''}
+      >
         <SelectTrigger className="w-[180px]">
-          <SelectValue placeholder={isLoading ? "Loading experiments..." : "Select an experiment"} />
+          <SelectValue
+            placeholder={
+              isLoading ? 'Loading experiments...' : 'Select an experiment'
+            }
+          />
         </SelectTrigger>
         <SelectContent>
           {options.map((opt) => (
-            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            <SelectItem key={opt.value} value={opt.value}>
+              {opt.label}
+            </SelectItem>
           ))}
         </SelectContent>
       </Select>

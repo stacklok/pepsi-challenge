@@ -6,24 +6,24 @@ import {
   PaginationNext,
   PaginationPrevious,
   PaginationEllipsis,
-} from "@/components/ui/pagination";
+} from '@/components/ui/pagination';
 
-export const TablePagination = ({ 
-  page, 
-  setPage, 
-  totalPages, 
+export const TablePagination = ({
+  page,
+  setPage,
+  totalPages,
   visiblePageCount = 5,
-  className = "mt-4",
+  className = 'mt-4',
   onPageChange = null,
   siblingCount = 1,
 }) => {
   const currentPage = Math.max(1, Math.min(page, totalPages || 1));
-  
+
   const handlePageChange = (newPage: number) => {
     if (newPage < 1 || newPage > totalPages || newPage === currentPage) return;
-    
+
     setPage(newPage);
-    
+
     if (onPageChange && typeof onPageChange === 'function') {
       onPageChange(newPage);
     }
@@ -43,23 +43,33 @@ export const TablePagination = ({
     if (showLeftDots && showRightDots) {
       const middleRange = Array.from(
         { length: rightSiblingIndex - leftSiblingIndex + 1 },
-        (_, i) => leftSiblingIndex + i
+        (_, i) => leftSiblingIndex + i,
       );
-      return [1, showLeftDots ? 'leftEllipsis' : 2, ...middleRange, showRightDots ? 'rightEllipsis' : totalPages - 1, totalPages];
-    } else if (showLeftDots) {
+      return [
+        1,
+        showLeftDots ? 'leftEllipsis' : 2,
+        ...middleRange,
+        showRightDots ? 'rightEllipsis' : totalPages - 1,
+        totalPages,
+      ];
+    }
+    
+    if (showLeftDots) {
       const rightRange = Array.from(
         { length: visiblePageCount - 2 },
-        (_, i) => totalPages - (visiblePageCount - 2) + i
+        (_, i) => totalPages - (visiblePageCount - 2) + i,
       );
       return [1, 'leftEllipsis', ...rightRange];
-    } else if (showRightDots) {
+    }
+    
+    if (showRightDots) {
       const leftRange = Array.from(
         { length: visiblePageCount - 2 },
-        (_, i) => i + 1
+        (_, i) => i + 1,
       );
       return [...leftRange, 'rightEllipsis', totalPages];
     }
-  
+
     return Array.from({ length: visiblePageCount }, (_, i) => i + 1);
   };
 
@@ -74,17 +84,24 @@ export const TablePagination = ({
           <PaginationItem>
             <PaginationPrevious
               onClick={() => handlePageChange(currentPage - 1)}
-              className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              className={
+                currentPage === 1
+                  ? 'pointer-events-none opacity-50'
+                  : 'cursor-pointer'
+              }
               aria-disabled={currentPage === 1}
               tabIndex={currentPage === 1 ? -1 : 0}
             />
           </PaginationItem>
 
           {/* Page Numbers */}
-          {pageNumbers.map((pageNumber, index) => {
-            if (pageNumber === 'leftEllipsis' || pageNumber === 'rightEllipsis') {
+          {pageNumbers.map((pageNumber) => {
+            if (
+              pageNumber === 'leftEllipsis' ||
+              pageNumber === 'rightEllipsis'
+            ) {
               return (
-                <PaginationItem key={`ellipsis-${index}`}>
+                <PaginationItem key={`ellipsis-${pageNumber}`}>
                   <PaginationEllipsis />
                 </PaginationItem>
               );
@@ -107,7 +124,11 @@ export const TablePagination = ({
           <PaginationItem>
             <PaginationNext
               onClick={() => handlePageChange(currentPage + 1)}
-              className={currentPage === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+              className={
+                currentPage === totalPages
+                  ? 'pointer-events-none opacity-50'
+                  : 'cursor-pointer'
+              }
               aria-disabled={currentPage === totalPages}
               tabIndex={currentPage === totalPages ? -1 : 0}
             />

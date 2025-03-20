@@ -28,13 +28,13 @@
     --chart-3: 271 100% 48%;
     --chart-4: 360 70% 40%;
     --chart-5: 220 30% 35%;
-  
+
     --pepsi-blue: 217, 91%, 55%; /* Tailwind blue-500 (#3B82F6) */
     --pepsi-blue-light: 217, 91%, 65%; /* Tailwind blue-400 (#60A5FA) */
 
     --radius: 0.5rem;
   }
-  
+
   .light {
     --background: 0 0% 98%;
     --foreground: 220 20% 20%;
@@ -72,7 +72,7 @@
     border-color: hsl(var(--border)); /* Ensures proper application */
   }
 }
- 
+
 @layer base {
   body {
     @apply bg-background text-foreground;
@@ -97,8 +97,8 @@
   --foreground-rgb: 255, 255, 255;
   --background-start-rgb: 17, 24, 39;
   --background-end-rgb: 0, 0, 0;
-} 
+}
 
 .markdown-body.ov {
   background: transparent;
-}  
+}
