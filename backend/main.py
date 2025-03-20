@@ -16,7 +16,7 @@ from config import Config
 import secrets
 from starlette.middleware.sessions import SessionMiddleware
 from typing import Optional
-from sqlalchemy import or_, select
+from sqlalchemy import or_, select, case
 from migration import migrate_database
 import csv
 import io
@@ -389,7 +389,6 @@ def is_admin(username: str) -> bool:
         return False
     finally:
         db_session.close()
-
 
 @app.get("/api/admin/results")
 async def get_results(

@@ -1,6 +1,6 @@
 import { FC, useEffect } from "react";
 import { useExperiments } from "../hooks/useExperiments";
-import { Select } from "./Select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface ExperimentSelectorProps {
   value: string | undefined;
@@ -31,19 +31,20 @@ export const ExperimentSelector: FC<ExperimentSelectorProps> = ({
     <div className="mb-4">
       <label
         htmlFor="experiment-select"
-        className="block text-lg font-medium text-gray-200 mb-2"
+        className="block text-lg font-medium mb-2"
       >
         Choose your experiments
       </label>
-      <Select
-        id="experiment-select"
-        className="w-[200px] bg-gray-900"
-        disabled={disabled || isLoading || options.length === 0}
-        value={value ?? ''}
-        onChange={onChange}
-        options={options}
-        placeholder={isLoading ? "Loading experiments..." : "Select an experiment"}
-      />
+      <Select disabled={disabled || isLoading || options.length === 0} onValueChange={onChange} value={value ?? ''} >
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder={isLoading ? "Loading experiments..." : "Select an experiment"} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {options.length === 0 && !isLoading && (
         <div className="text-amber-600 text-sm mt-1">
           No experiments available

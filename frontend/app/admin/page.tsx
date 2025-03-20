@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Doughnut } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -17,6 +17,15 @@ import {
 import Link from 'next/link';
 import { Markdown } from '@/components/Markdown';
 import { getMarkdownNormalize } from '@/lib/utils';
+import { Header } from '@/components/Header';
+import { useUser } from '@/hooks/useUser';
+import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useTheme } from '@/hooks/useTheme';
+import { Button } from '@/components/ui/button';
+import { TablePagination } from '@/components/TablePagination';
+import { Dialog, DialogClose, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 
 // Register ChartJS components
 ChartJS.register(
@@ -70,29 +79,23 @@ export default function AdminPanel() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [results, setResults] = useState<ComparisonResult[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
   const [username, setUsername] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
-
-  const openModal = () => {
-    setIsUserAdmin(false);
-    setIsModalOpen(true);
-  };
-  const closeModal = () => setIsModalOpen(false);
+  const user = useUser();
+  const theme = useTheme();
 
   useEffect(() => {
     checkAdmin();
     fetchStats();
     fetchResults();
     fetchUsers();
-  }, [page, search]);
+  }, [page]);
 
   const checkAdmin = async () => {
     try {
@@ -128,7 +131,7 @@ export default function AdminPanel() {
     setLoading(true);
     try {
       const response = await fetch(
-        `/api/admin/results?page=${page}&per_page=10&search=${encodeURIComponent(search)}`,
+        `/api/admin/results?page=${page}&per_page=10`,
         { 
           credentials: 'include',
           headers: {
@@ -247,7 +250,6 @@ export default function AdminPanel() {
       // Reset form and close modal
       setUsername('');
       setIsUserAdmin(false);
-      closeModal();
       
       // Refresh user list or show success message
       // You might want to call a function here to reload your users list
@@ -287,381 +289,360 @@ export default function AdminPanel() {
   const overallStat = stats?.stats.find(stat => stat.experiment_id === "all");
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6 relative z-50">
-        <div className="flex items-center gap-4">
-          <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-          <Link 
-            href="/"
-            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors relative"
-          >
-            Return to Home
-          </Link>
+    <div className="min-h-screen">
+      {/* Header */}
+      <Header user={user} />
+      <div className="max-w-7xl container mx-auto p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold">Admin Dashboard</h1>
+            <Link 
+              href="/"
+              className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors relative"
+            >
+              Return to Home
+            </Link>
+          </div>
+          <div>
+            <Button
+              onClick={() => exportData()}
+              variant='secondary'
+            >
+              Export CSV
+            </Button>
+          </div>
         </div>
-        <div>
-          <button
-            onClick={() => exportData()}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Export CSV
-          </button>
-        </div>
-      </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-        <Card className="p-6">
-          <h2 className="text-lg font-semibold mb-4">Summary</h2>
-          <div className="space-y-2">
-            <p className="font-bold text-white">
-              Total Comparisons: {overallStat?.total_comparisons || 0}
-            </p>
-            {overallStat?.model_preferences?.map((pref) => (
-              <p 
-                key={pref.model} 
-                className={`font-bold ${
-                  pref.model === 'finetuned' && pref.percentage > 50 
-                    ? 'text-green-400' 
-                    : pref.model === 'base' && pref.percentage > 50 
-                      ? 'text-green-400'
-                      : 'text-red-400'
-                }`}
-              >
-                {pref.model === 'base' ? 'Base Model' : 'Fine-tuned Model'}{' '}
-                {pref.percentage}% ({pref.count} votes)
+        {/* Stats Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6 min-h-72">
+          <Card>
+            <CardHeader>
+              <CardTitle>Summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="font-bold text-white">
+                Total Comparisons: {overallStat?.total_comparisons || 0}
               </p>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-6 md:col-span-2">
-          <h2 className="text-lg font-semibold mb-4">Model Preferences</h2>
-          <div className="h-48">
-            {overallStat && (
-              <Doughnut
-                data={{
-                  labels: overallStat.model_preferences?.map(p => p.model === 'base' ? 'Base Model' : 'Finetuned Model'),
-                  datasets: [{
-                    data: overallStat.model_preferences?.map(p => p.count),
-                    backgroundColor: ['#4F46E5', '#10B981'],
-                    borderWidth: 0
-                  }]
-                }}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false
-                }}
-              />
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-6">
-        {/* Results Table */}
-        <Card className="p-6">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Recent Comparisons</h2>
-            <input
-              type="text"
-              placeholder="Search..."
-              className="px-4 py-2 border rounded"
-              value={search}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setPage(1);
-              }}
-            />
-          </div>
-          <div className="overflow-x-auto">
-            {results.length > 0 ? (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">User</th>
-                    <th className="text-left p-2">Preferred Model</th>
-                    <th className="text-left p-2">Prompt</th>
-                    <th className="text-left p-2">Experiment</th>
-                    <th className="text-left p-2">Created At</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((result) => (
-                    <Fragment key={result.id}>
-                      <tr
-                        className="border-b border-gray-700 cursor-pointer transition-colors"
-                        onClick={() => setExpandedRow(expandedRow === result.id ? null : result.id)}
-                      >
-                        <td className="p-2">{result.github_username}</td>
-                        <td className="p-2">
-                          <span className={`px-2 py-1 rounded text-sm ${
-                            result.preferred_model === 'base' 
-                              ? 'bg-indigo-100 text-indigo-800' 
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {result.preferred_model === 'base' ? 'Base' : 'Finetuned'}
-                          </span>
-                        </td>
-                        <td className="p-2">
-                          <code className="text-sm">{result.code_prefix.substring(0, 50)}...</code>
-                        </td>
-                        <td className="p-2">
-                          {result?.experiment_id ?? 'N/A'}
-                        </td>
-                        <td className="p-2">
-                          {new Date(result.created_at).toLocaleString('en-GB', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit',
-                            second: '2-digit',
-                            hour12: false
-                          })}
-                        </td>
-                      </tr>
-                      {expandedRow === result.id && (
-                        <tr>
-                          <td colSpan={5} className="p-4 bg-gray-800 border-b border-gray-700">
-                            <div className="space-y-6">
-                              <div>
-                                <h3 className="font-semibold mb-2 text-white">Original Prompt</h3>
-                                {renderCodeWithHighlight(result.code_prefix, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
-                              </div>
-                              
-                              <div>
-                                <h3 className="font-semibold mb-2 text-white">
-                                  <span className={result.preferred_model === 'base' ? 'text-green-400' : 'text-red-400'}>
-                                    {result.preferred_model === 'base' ? 'Selected' : 'Rejected'}
-                                  </span>
-                                  <span className="text-gray-400 ml-2">
-                                    Completion (Base Model - Qwen/Qwen2.5-Coder-0.5B)
-                                  </span>
-                                </h3>
-                                {renderCodeWithHighlight(result.base_completion, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
-                              </div>
-
-                              <div>
-                                <h3 className="font-semibold mb-2 text-white">
-                                  <span className={result.preferred_model === 'finetuned' ? 'text-green-400' : 'text-red-400'}>
-                                    {result.preferred_model === 'finetuned' ? 'Selected' : 'Rejected'}
-                                  </span>
-                                  <span className="text-gray-400 ml-2">
-                                    Completion (Fine-tuned Model - stacklok/Qwen2.5-Coder-0.5B-codegate)
-                                  </span>
-                                </h3>
-                                {renderCodeWithHighlight(result.finetuned_completion, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
-                              </div>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </Fragment>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                {loading ? 'Loading...' : 'No results found'}
-              </div>
-            )}
-          </div>
-
-          {results.length > 0 && (
-            <div className="flex justify-between items-center mt-4">
-              <button
-                onClick={() => setPage(p => Math.max(1, p - 1))}
-                disabled={page === 1}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600"
-              >
-                Previous
-              </button>
-              <span>
-                Page {page} of {totalPages}
-              </span>
-              <button
-                onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                disabled={page === totalPages}
-                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:hover:bg-blue-600"
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </Card>
-        {stats?.stats.length > 1 && (
-          <Card className="p-6">
-            <h2 className="text-lg font-semibold mb-4">Experiment Breakdown</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">Experiment</th>
-                    <th className="text-left p-2">Total</th>
-                    <th className="text-left p-2">Base Model</th>
-                    <th className="text-left p-2">Finetuned Model</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {stats.stats
-                    .filter(stat => stat.experiment_id !== "all")
-                    .map((stat) => {
-                      const basePreference = stat.model_preferences.find(p => p.model === 'base');
-                      const finetunedPreference = stat.model_preferences.find(p => p.model === 'finetuned');
-                      
-                      return (
-                        <tr key={stat.experiment_id} className="border-b border-gray-700">
-                          <td className="p-2">{stat.experiment_id}</td>
-                          <td className="p-2">{stat.total_comparisons}</td>
-                          <td className="p-2">
-                            {basePreference ? (
-                              <span className={`${basePreference.percentage > 50 ? 'text-green-400' : 'text-gray-400'}`}>
-                                {basePreference.count} ({basePreference.percentage}%)
-                              </span>
-                            ) : '0 (0%)'}
-                          </td>
-                          <td className="p-2">
-                            {finetunedPreference ? (
-                              <span className={`${finetunedPreference.percentage > 50 ? 'text-green-400' : 'text-gray-400'}`}>
-                                {finetunedPreference.count} ({finetunedPreference.percentage}%)
-                              </span>
-                            ) : '0 (0%)'}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
+              {overallStat?.model_preferences?.map((pref) => (
+                <p 
+                  key={pref.model} 
+                  className={`font-bold ${
+                    pref.model === 'finetuned' && pref.percentage > 50 
+                      ? 'text-green-400' 
+                      : pref.model === 'base' && pref.percentage > 50 
+                        ? 'text-green-400'
+                        : 'text-red-400'
+                  }`}
+                >
+                  {pref.model === 'base' ? 'Base Model' : 'Fine-tuned Model'}{' '}
+                  {pref.percentage}% ({pref.count} votes)
+                </p>
+              ))}
+            </CardContent>
           </Card>
-        )}
-        
-        {/* User Management Table */}
-        <Card className="p-6">
+          
+          <Card className='md:col-span-2'>
+            <CardHeader>
+              <CardTitle>Model Preferences</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {overallStat && (
+                <Doughnut
+                  height="250"
+                  data={{
+                    labels: overallStat.model_preferences?.map(p => p.model === 'base' ? 'Base Model' : 'Finetuned Model'),
+                    datasets: [{
+                      data: overallStat.model_preferences?.map(p => p.count),
+                      backgroundColor: ['#4F46E5', '#10B981'],
+                      borderWidth: 0
+                    }]
+                  }}
+                  options={{
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    color: theme.selected === 'dark' ? 'white' : 'black'
+                  }}
+                />
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg font-semibold">User Management</h2>
-          <button
-            onClick={openModal}
-            className="px-2 py-1 bg-green-600 text-white rounded hover:bg-green-700 justify-self-end"
-          >
-            Add User
-          </button>
-          {/* Modal/Popup */}
-          {isModalOpen && (
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                <h2 className="text-xl font-bold text-gray-700 mb-4">Add New User</h2>
-                
-                <form onSubmit={handleSubmit}>
-                  <div className="mb-4">
-                    <label className="block text-gray-700 mb-2" htmlFor="username">
-                      Github Username
-                    </label>
-                    <input
-                      id="username"
-                      type="text"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="w-full border text-black rounded px-3 py-2"
-                      required
-                    />
-                  </div>
-                  
-                  <div className="mb-6">
-                    <div className="flex items-center">
-                      <label className="ml-2 block text-gray-700" htmlFor="isAdmin">
-                        Grant Admin?:
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6 mb-6">
+          {/* Results Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Comparisons</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {results.length > 0 ? (
+                <Table className="w-full">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>User</TableHead>
+                      <TableHead>Preferred Model</TableHead>
+                      <TableHead>Prompt</TableHead>
+                      <TableHead>Experiment</TableHead>
+                      <TableHead>Created At</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {results.map((result) => (
+                      <Fragment key={result.id}>
+                        <TableRow
+                          className="cursor-pointer transition-colors"
+                          onClick={() => setExpandedRow(expandedRow === result.id ? null : result.id)}
+                        >
+                          <TableCell className="p-2">{result.github_username}</TableCell>
+                          <TableCell className="p-2">
+                            <span className={`px-2 py-1 rounded text-sm ${
+                              result.preferred_model === 'base' 
+                                ? 'bg-indigo-100 text-indigo-800' 
+                                : 'bg-green-100 text-green-800'
+                            }`}>
+                              {result.preferred_model === 'base' ? 'Base' : 'Finetuned'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="p-2">
+                            <code className="text-sm">{result.code_prefix.substring(0, 50)}...</code>
+                          </TableCell>
+                          <TableCell className="p-2">
+                            {result?.experiment_id ?? 'N/A'}
+                          </TableCell>
+                          <TableCell className="p-2">
+                            {new Date(result.created_at).toLocaleString('en-GB', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              year: 'numeric',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                              hour12: false
+                            })}
+                          </TableCell>
+                        </TableRow>
+                        {expandedRow === result.id && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="p-4 bg-popover-foreground dark:bg-popover">
+                              <div className="space-y-6">
+                                <div>
+                                  <h3 className="font-semibold mb-2 text-white">Original Prompt</h3>
+                                  {renderCodeWithHighlight(result.code_prefix, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
+                                </div>
+                                
+                                <div>
+                                  <h3 className="font-semibold mb-2 text-white">
+                                    <span className={result.preferred_model === 'base' ? 'text-green-400' : 'text-red-400'}>
+                                      {result.preferred_model === 'base' ? 'Selected' : 'Rejected'}
+                                    </span>
+                                    <span className="text-gray-400 ml-2">
+                                      Completion (Base Model - Qwen/Qwen2.5-Coder-0.5B)
+                                    </span>
+                                  </h3>
+                                  {renderCodeWithHighlight(result.base_completion, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
+                                </div>
+
+                                <div>
+                                  <h3 className="font-semibold mb-2 text-white">
+                                    <span className={result.preferred_model === 'finetuned' ? 'text-green-400' : 'text-red-400'}>
+                                      {result.preferred_model === 'finetuned' ? 'Selected' : 'Rejected'}
+                                    </span>
+                                    <span className="text-gray-400 ml-2">
+                                      Completion (Fine-tuned Model - stacklok/Qwen2.5-Coder-0.5B-codegate)
+                                    </span>
+                                  </h3>
+                                  {renderCodeWithHighlight(result.finetuned_completion, result?.experiment_id ? result.experiment_id.includes('FIM') : true )}
+                                </div>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </Fragment>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8 text-gray-500">
+                  {loading ? 'Loading...' : 'No results found'}
+                </div>
+              )}
+
+              {results.length > 0 && (
+                <TablePagination page={page} setPage={setPage} totalPages={totalPages} />
+              )}
+            </CardContent>
+          </Card>
+
+          {stats?.stats.length > 1 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Experiment Breakdown</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table className="w-full">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Experiment</TableHead>
+                      <TableHead>Total</TableHead>
+                      <TableHead>Base Model</TableHead>
+                      <TableHead>Finetuned Model</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {stats.stats
+                      .filter(stat => stat.experiment_id !== "all")
+                      .map((stat) => {
+                        const basePreference = stat.model_preferences.find(p => p.model === 'base');
+                        const finetunedPreference = stat.model_preferences.find(p => p.model === 'finetuned');
+                        
+                        return (
+                          <TableRow key={stat.experiment_id}>
+                            <TableCell>{stat.experiment_id}</TableCell>
+                            <TableCell>{stat.total_comparisons}</TableCell>
+                            <TableCell>
+                              {basePreference ? (
+                                <span className={`${basePreference.percentage > 50 ? 'text-green-400' : 'text-gray-400'}`}>
+                                  {basePreference.count} ({basePreference.percentage}%)
+                                </span>
+                              ) : '0 (0%)'}
+                            </TableCell>
+                            <TableCell>
+                              {finetunedPreference ? (
+                                <span className={`${finetunedPreference.percentage > 50 ? 'text-green-400' : 'text-gray-400'}`}>
+                                  {finetunedPreference.count} ({finetunedPreference.percentage}%)
+                                </span>
+                              ) : '0 (0%)'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* User Management Table */}
+          <Card>
+            <CardHeader className="flex flex-row justify-between items-center w-full">
+              <CardTitle>User Management</CardTitle>
+              <Dialog>
+                <DialogTrigger asChild><Button>Add User</Button></DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Add New User</DialogTitle>
+                  </DialogHeader>
+                  <form onSubmit={handleSubmit}>
+                    <div className="flex flex-col mb-2">
+                      <label htmlFor="username" className='mb-2'>
+                        Github Username
                       </label>
-                      <input
-                        id="isAdmin"
-                        type="checkbox"
-                        checked={isUserAdmin}
-                        onChange={(e) => setIsUserAdmin(e.target.checked)}
-                        className="h-4 w-10 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      <Input
+                        id="username"
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        required
                       />
                     </div>
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <button
-                      type="button"
-                      onClick={closeModal}
-                      className="mr-2 bg-gray-300 hover:bg-gray-400 px-4 py-2 rounded"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={isLoading}
-                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded disabled:bg-blue-300"
-                    >
-                      {isLoading ? 'Adding...' : 'Add User'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-          </div>
-          <div className="overflow-x-auto">
-            {users.length > 0 ? (
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-2">Username</th>
-                    <th className="text-left p-2">Admin</th>
-                    <th className="text-left p-2">Action</th>
-                    <th className="text-left p-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {users.map((user) => (
-                    <>
-                      <tr 
-                        key={user.id} 
-                        className="border-b border-gray-700 transition-colors"
+                    
+                    <div className="mb-6">
+                      <div className="flex items-center">
+                        <label htmlFor="isAdmin">
+                          Grant Admin?:
+                        </label>
+                        <Checkbox
+                          id="isAdmin"
+                          checked={isUserAdmin}
+                          onCheckedChange={(val) => typeof val === "boolean" && setIsUserAdmin(val)}
+                          className="ml-4"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      <DialogClose asChild>
+                        <Button
+                          type="button"
+                          variant='outline'
+                          className='mr-4'
+                        >
+                          Cancel
+                        </Button>
+                      </DialogClose>
+                      <Button
+                        type="submit"
+                        disabled={isLoading}
                       >
-                        <td className="p-2">{user.username}</td>
-                        <td className="p-2">{user.admin == false ? "❌" : "✅"}</td>
-                        <td className="p-2">
-                          <div className="px-0">{user.admin == false ?
-                              <button
-                                onClick={() => grantAdmin(user.username)}
-                                className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
-                              >
-                                Grant Admin
-                              </button>
-                            :
-                              <button
-                                onClick={() => revokeAdmin(user.username)}
-                                className="px-2 py-1 bg-red-600 text-white rounded hover:bg-red-700 "
-                              >
-                                Revoke Admin
-                              </button>
-                            }
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <button
-                            onClick={() => deleteUser(user.username)}
-                            className="px-2 py-1 bg-black-600 text-white rounded hover:bg-white "
+                        {isLoading ? 'Adding...' : 'Add User'}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                {users.length > 0 ? (
+                  <Table className="w-full">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Username</TableHead>
+                        <TableHead>Preferred Model</TableHead>
+                        <TableHead>Admin</TableHead>
+                        <TableHead className="text-right">Action</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {users.map((user) => (
+                        <Fragment key={user.id} >
+                          <TableRow 
+                            key={user.id} 
                           >
-                            🗑️
-                          </button>
-                        </td>
-                      </tr>
-                    </>
-                  ))}
-                </tbody>
-              </table>
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                {loading ? 'Loading...' : 'No results found'}
+                            <TableCell>{user.username}</TableCell>
+                            <TableCell>{user.admin == false ? "❌" : "✅"}</TableCell>
+                            <TableCell>
+                              <div className="px-0">{user.admin == false ?
+                                  <Button
+                                    onClick={() => grantAdmin(user.username)}
+                                    variant='secondary'
+                                  >
+                                    Grant Admin
+                                  </Button>
+                                :
+                                  <Button
+                                    onClick={() => revokeAdmin(user.username)}
+                                    variant='destructive'
+                                  >
+                                    Revoke Admin
+                                  </Button>
+                                }
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button
+                                onClick={() => deleteUser(user.username)}
+                                variant='ghost'
+                                size='icon'
+                                title='Delete User'
+                              >
+                                🗑️
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        </Fragment>
+                      ))}
+                    </TableBody>
+                  </Table>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    {loading ? 'Loading...' : 'No results found'}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </Card>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );
