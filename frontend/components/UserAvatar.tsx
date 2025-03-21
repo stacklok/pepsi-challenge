@@ -1,6 +1,7 @@
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { Button } from "./ui/button";
+import Link from 'next/link';
+import { useEffect, useState } from 'react';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { Button } from './ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,8 +9,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar";
+} from './ui/dropdown-menu';
 
 type UserAvatarProps = {
   user: {
@@ -22,8 +22,8 @@ export default function UserAvatar({ user }: UserAvatarProps) {
   const [isAdmin, setIsAdmin] = useState(false);
 
   const handleLogout = () => {
-    fetch("/auth/logout", {
-      credentials: "include",
+    fetch('/auth/logout', {
+      credentials: 'include',
     })
       .then(() => {
         window.location.reload();
@@ -33,8 +33,8 @@ export default function UserAvatar({ user }: UserAvatarProps) {
 
   useEffect(() => {
     const checkAdmin = async () => {
-      const response = await fetch("/auth/is_admin", {
-        credentials: "include",
+      const response = await fetch('/auth/is_admin', {
+        credentials: 'include',
       });
       const data = await response.json();
       setIsAdmin(data.is_admin);

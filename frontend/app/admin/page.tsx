@@ -1,24 +1,20 @@
-"use client";
+'use client';
 
-import { Fragment, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Doughnut } from "react-chartjs-2";
+import { Header } from '@/components/Header';
+import { Markdown } from '@/components/Markdown';
+import { TablePagination } from '@/components/TablePagination';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
-  Chart as ChartJS,
-  ArcElement,
-  Tooltip,
-  Legend,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-} from "chart.js";
-import Link from "next/link";
-import { Markdown } from "@/components/Markdown";
-import { getMarkdownNormalize } from "@/lib/utils";
-import { Header } from "@/components/Header";
-import { useUser } from "@/hooks/useUser";
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
 import {
   Table,
   TableBody,
@@ -27,21 +23,25 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { useTheme } from "@/hooks/useTheme";
-import { Button } from "@/components/ui/button";
-import { TablePagination } from "@/components/TablePagination";
+} from '@/components/ui/table';
+import { usePrevious } from '@/hooks/usePrevious';
+import { useTheme } from '@/hooks/useTheme';
+import { useUser } from '@/hooks/useUser';
+import { getMarkdownNormalize } from '@/lib/utils';
 import {
-  Dialog,
-  DialogClose,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-import { usePrevious } from "@/hooks/usePrevious";
+  ArcElement,
+  CategoryScale,
+  Chart as ChartJS,
+  Legend,
+  LineElement,
+  LinearScale,
+  PointElement,
+  Tooltip,
+} from 'chart.js';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Fragment, useEffect, useState } from 'react';
+import { Doughnut } from 'react-chartjs-2';
 
 // Register ChartJS components
 ChartJS.register(
@@ -51,7 +51,7 @@ ChartJS.register(
   CategoryScale,
   LinearScale,
   PointElement,
-  LineElement
+  LineElement,
 );
 
 interface ComparisonResult {
@@ -95,7 +95,7 @@ export default function AdminPanel() {
   const [stats, setStats] = useState<Stats | null>(null);
   const [results, setResults] = useState<ComparisonResult[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [username, setUsername] = useState("");
+  const [username, setUsername] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [isUserAdmin, setIsUserAdmin] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -115,38 +115,38 @@ export default function AdminPanel() {
   }, []);
 
   useEffect(() => {
-    if(page !== prevPage) {
+    if (page !== prevPage) {
       fetchResults();
     }
-  }, [page, prevPage])
+  }, [page, prevPage]);
 
   const checkAdmin = async () => {
     try {
-      const response = await fetch("/auth/is_admin", {
-        credentials: "include",
+      const response = await fetch('/auth/is_admin', {
+        credentials: 'include',
       });
       const data = await response.json();
       setIsAdmin(data.is_admin);
       if (!data.is_admin) {
-        router.push("/");
+        router.push('/');
       }
     } catch (error) {
-      console.error("Error checking admin status:", error);
-      router.push("/");
+      console.error('Error checking admin status:', error);
+      router.push('/');
     }
   };
 
   const fetchStats = async () => {
     try {
-      const response = await fetch("/api/admin/stats", {
-        credentials: "include",
+      const response = await fetch('/api/admin/stats', {
+        credentials: 'include',
       });
       if (response.ok) {
         const data = await response.json();
         setStats(data);
       }
     } catch (error) {
-      console.error("Error fetching stats:", error);
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -156,11 +156,11 @@ export default function AdminPanel() {
       const response = await fetch(
         `/api/admin/results?page=${page}&per_page=10`,
         {
-          credentials: "include",
+          credentials: 'include',
           headers: {
-            Accept: "application/json",
+            Accept: 'application/json',
           },
-        }
+        },
       );
 
       if (!response.ok) {
@@ -168,12 +168,12 @@ export default function AdminPanel() {
       }
 
       const data = await response.json();
-      console.log("Fetched results:", data); // For debugging
+      console.log('Fetched results:', data); // For debugging
 
       setResults(data.results);
       setTotalPages(data.total_pages);
     } catch (error) {
-      console.error("Error fetching results:", error);
+      console.error('Error fetching results:', error);
       setResults([]);
       setTotalPages(1);
     } finally {
@@ -184,9 +184,9 @@ export default function AdminPanel() {
   const fetchUsers = async () => {
     try {
       const response = await fetch('/api/admin/users', {
-        credentials: "include",
+        credentials: 'include',
         headers: {
-          Accept: "application/json",
+          Accept: 'application/json',
         },
       });
 
@@ -198,7 +198,7 @@ export default function AdminPanel() {
 
       setUsers(users);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error('Error fetching users:', error);
       setUsers([]);
       setTotalPages(1);
     } finally {
@@ -208,31 +208,31 @@ export default function AdminPanel() {
 
   const exportData = async () => {
     try {
-      const response = await fetch("/api/admin/export?format=csv", {
-        credentials: "include",
+      const response = await fetch('/api/admin/export?format=csv', {
+        credentials: 'include',
       });
       if (response.ok) {
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement("a");
+        const a = document.createElement('a');
         a.href = url;
-        a.download = "comparison-results.csv";
+        a.download = 'comparison-results.csv';
         a.click();
       }
     } catch (error) {
-      console.error("Error exporting data:", error);
+      console.error('Error exporting data:', error);
     }
   };
 
   const grantAdmin = async (username) => {
     try {
       await fetch(`/api/admin/users/${username}/grant-admin`, {
-        method: "PUT",
-        credentials: "include",
+        method: 'PUT',
+        credentials: 'include',
       });
     } catch (error) {
       console.error(
-        `Error granting admin to user: ${username}, error: ${error}`
+        `Error granting admin to user: ${username}, error: ${error}`,
       );
     }
 
@@ -242,12 +242,12 @@ export default function AdminPanel() {
   const revokeAdmin = async (username) => {
     try {
       await fetch(`/api/admin/users/${username}/revoke-admin`, {
-        method: "PUT",
-        credentials: "include",
+        method: 'PUT',
+        credentials: 'include',
       });
     } catch (error) {
       console.error(
-        `Error revoking admin from user: ${username}, error: ${error}`
+        `Error revoking admin from user: ${username}, error: ${error}`,
       );
     }
 
@@ -259,27 +259,27 @@ export default function AdminPanel() {
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/admin/users", {
-        method: "POST",
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({ username, admin: isUserAdmin }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to add user");
+        throw new Error('Failed to add user');
       }
 
       // Reset form and close modal
-      setUsername("");
+      setUsername('');
       setIsUserAdmin(false);
 
       // Refresh user list or show success message
       // You might want to call a function here to reload your users list
     } catch (error) {
-      console.error("Error adding user:", error);
-      alert("Failed to add user. Please try again.");
+      console.error('Error adding user:', error);
+      alert('Failed to add user. Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -290,8 +290,8 @@ export default function AdminPanel() {
   const deleteUser = async (username) => {
     try {
       await fetch(`/api/admin/users/${username}`, {
-        method: "DELETE",
-        credentials: "include",
+        method: 'DELETE',
+        credentials: 'include',
       });
     } catch (error) {
       console.error(`Error deleting user ${username}:`, error);
@@ -308,7 +308,7 @@ export default function AdminPanel() {
     return <div className="flex justify-center p-8">Loading...</div>;
   }
 
-  const overallStat = stats?.stats.find((stat) => stat.experiment_id === "all");
+  const overallStat = stats?.stats.find((stat) => stat.experiment_id === 'all');
 
   return (
     <div className="min-h-screen">
@@ -346,14 +346,14 @@ export default function AdminPanel() {
                 <p
                   key={pref.model}
                   className={`font-bold ${
-                    pref.model === "finetuned" && pref.percentage > 50
-                      ? "text-green-400"
-                      : pref.model === "base" && pref.percentage > 50
-                      ? "text-green-400"
-                      : "text-red-400"
+                    pref.model === 'finetuned' && pref.percentage > 50
+                      ? 'text-green-400'
+                      : pref.model === 'base' && pref.percentage > 50
+                        ? 'text-green-400'
+                        : 'text-red-400'
                   }`}
                 >
-                  {pref.model === "base" ? "Base Model" : "Fine-tuned Model"}{" "}
+                  {pref.model === 'base' ? 'Base Model' : 'Fine-tuned Model'}{' '}
                   {pref.percentage}% ({pref.count} votes)
                 </p>
               ))}
@@ -370,14 +370,14 @@ export default function AdminPanel() {
                   height="250"
                   data={{
                     labels: overallStat.model_preferences?.map((p) =>
-                      p.model === "base" ? "Base Model" : "Finetuned Model"
+                      p.model === 'base' ? 'Base Model' : 'Finetuned Model',
                     ),
                     datasets: [
                       {
                         data: overallStat.model_preferences?.map(
-                          (p) => p.count
+                          (p) => p.count,
                         ),
-                        backgroundColor: ["#4F46E5", "#10B981"],
+                        backgroundColor: ['#4F46E5', '#10B981'],
                         borderWidth: 0,
                       },
                     ],
@@ -385,7 +385,7 @@ export default function AdminPanel() {
                   options={{
                     responsive: true,
                     maintainAspectRatio: false,
-                    color: theme.selected === "dark" ? "white" : "black",
+                    color: theme.selected === 'dark' ? 'white' : 'black',
                   }}
                 />
               )}
@@ -418,7 +418,7 @@ export default function AdminPanel() {
                           className="cursor-pointer transition-colors"
                           onClick={() =>
                             setExpandedRow(
-                              expandedRow === result.id ? null : result.id
+                              expandedRow === result.id ? null : result.id,
                             )
                           }
                         >
@@ -428,14 +428,14 @@ export default function AdminPanel() {
                           <TableCell className="p-2">
                             <span
                               className={`px-2 py-1 rounded text-sm ${
-                                result.preferred_model === "base"
-                                  ? "bg-indigo-100 text-indigo-800"
-                                  : "bg-green-100 text-green-800"
+                                result.preferred_model === 'base'
+                                  ? 'bg-indigo-100 text-indigo-800'
+                                  : 'bg-green-100 text-green-800'
                               }`}
                             >
-                              {result.preferred_model === "base"
-                                ? "Base"
-                                : "Finetuned"}
+                              {result.preferred_model === 'base'
+                                ? 'Base'
+                                : 'Finetuned'}
                             </span>
                           </TableCell>
                           <TableCell className="p-2">
@@ -444,20 +444,20 @@ export default function AdminPanel() {
                             </code>
                           </TableCell>
                           <TableCell className="p-2">
-                            {result?.experiment_id ?? "N/A"}
+                            {result?.experiment_id ?? 'N/A'}
                           </TableCell>
                           <TableCell className="p-2">
                             {new Date(result.created_at).toLocaleString(
-                              "en-GB",
+                              'en-GB',
                               {
-                                day: "2-digit",
-                                month: "2-digit",
-                                year: "numeric",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                                second: "2-digit",
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
                                 hour12: false,
-                              }
+                              },
                             )}
                           </TableCell>
                         </TableRow>
@@ -475,8 +475,8 @@ export default function AdminPanel() {
                                   {renderCodeWithHighlight(
                                     result.code_prefix,
                                     result?.experiment_id
-                                      ? result.experiment_id.includes("FIM")
-                                      : true
+                                      ? result.experiment_id.includes('FIM')
+                                      : true,
                                   )}
                                 </div>
 
@@ -484,14 +484,14 @@ export default function AdminPanel() {
                                   <h3 className="font-semibold mb-2 text-white">
                                     <span
                                       className={
-                                        result.preferred_model === "base"
-                                          ? "text-green-400"
-                                          : "text-red-400"
+                                        result.preferred_model === 'base'
+                                          ? 'text-green-400'
+                                          : 'text-red-400'
                                       }
                                     >
-                                      {result.preferred_model === "base"
-                                        ? "Selected"
-                                        : "Rejected"}
+                                      {result.preferred_model === 'base'
+                                        ? 'Selected'
+                                        : 'Rejected'}
                                     </span>
                                     <span className="text-gray-400 ml-2">
                                       Completion (Base Model -
@@ -501,8 +501,8 @@ export default function AdminPanel() {
                                   {renderCodeWithHighlight(
                                     result.base_completion,
                                     result?.experiment_id
-                                      ? result.experiment_id.includes("FIM")
-                                      : true
+                                      ? result.experiment_id.includes('FIM')
+                                      : true,
                                   )}
                                 </div>
 
@@ -510,14 +510,14 @@ export default function AdminPanel() {
                                   <h3 className="font-semibold mb-2 text-white">
                                     <span
                                       className={
-                                        result.preferred_model === "finetuned"
-                                          ? "text-green-400"
-                                          : "text-red-400"
+                                        result.preferred_model === 'finetuned'
+                                          ? 'text-green-400'
+                                          : 'text-red-400'
                                       }
                                     >
-                                      {result.preferred_model === "finetuned"
-                                        ? "Selected"
-                                        : "Rejected"}
+                                      {result.preferred_model === 'finetuned'
+                                        ? 'Selected'
+                                        : 'Rejected'}
                                     </span>
                                     <span className="text-gray-400 ml-2">
                                       Completion (Fine-tuned Model -
@@ -527,8 +527,8 @@ export default function AdminPanel() {
                                   {renderCodeWithHighlight(
                                     result.finetuned_completion,
                                     result?.experiment_id
-                                      ? result.experiment_id.includes("FIM")
-                                      : true
+                                      ? result.experiment_id.includes('FIM')
+                                      : true,
                                   )}
                                 </div>
                               </div>
@@ -541,7 +541,7 @@ export default function AdminPanel() {
                 </Table>
               ) : (
                 <div className="text-center py-8 text-gray-500">
-                  {loading ? "Loading..." : "No results found"}
+                  {loading ? 'Loading...' : 'No results found'}
                 </div>
               )}
 
@@ -572,13 +572,13 @@ export default function AdminPanel() {
                   </TableHeader>
                   <TableBody>
                     {stats.stats
-                      .filter((stat) => stat.experiment_id !== "all")
+                      .filter((stat) => stat.experiment_id !== 'all')
                       .map((stat) => {
                         const basePreference = stat.model_preferences.find(
-                          (p) => p.model === "base"
+                          (p) => p.model === 'base',
                         );
                         const finetunedPreference = stat.model_preferences.find(
-                          (p) => p.model === "finetuned"
+                          (p) => p.model === 'finetuned',
                         );
 
                         return (
@@ -590,15 +590,15 @@ export default function AdminPanel() {
                                 <span
                                   className={`${
                                     basePreference.percentage > 50
-                                      ? "text-green-400"
-                                      : "text-gray-400"
+                                      ? 'text-green-400'
+                                      : 'text-gray-400'
                                   }`}
                                 >
                                   {basePreference.count} (
                                   {basePreference.percentage}%)
                                 </span>
                               ) : (
-                                "0 (0%)"
+                                '0 (0%)'
                               )}
                             </TableCell>
                             <TableCell>
@@ -606,15 +606,15 @@ export default function AdminPanel() {
                                 <span
                                   className={`${
                                     finetunedPreference.percentage > 50
-                                      ? "text-green-400"
-                                      : "text-gray-400"
+                                      ? 'text-green-400'
+                                      : 'text-gray-400'
                                   }`}
                                 >
                                   {finetunedPreference.count} (
                                   {finetunedPreference.percentage}%)
                                 </span>
                               ) : (
-                                "0 (0%)"
+                                '0 (0%)'
                               )}
                             </TableCell>
                           </TableRow>
@@ -659,7 +659,7 @@ export default function AdminPanel() {
                           id="isAdmin"
                           checked={isUserAdmin}
                           onCheckedChange={(val) =>
-                            typeof val === "boolean" && setIsUserAdmin(val)
+                            typeof val === 'boolean' && setIsUserAdmin(val)
                           }
                           className="ml-4"
                         />
@@ -677,7 +677,7 @@ export default function AdminPanel() {
                         </Button>
                       </DialogClose>
                       <Button type="submit" disabled={isLoading}>
-                        {isLoading ? "Adding..." : "Add User"}
+                        {isLoading ? 'Adding...' : 'Add User'}
                       </Button>
                     </div>
                   </form>
@@ -702,7 +702,7 @@ export default function AdminPanel() {
                           <TableRow key={user.id}>
                             <TableCell>{user.username}</TableCell>
                             <TableCell>
-                              {user.admin === false ? "❌" : "✅"}
+                              {user.admin === false ? '❌' : '✅'}
                             </TableCell>
                             <TableCell>
                               <div className="px-0">
@@ -740,7 +740,7 @@ export default function AdminPanel() {
                   </Table>
                 ) : (
                   <div className="text-center py-8 text-gray-500">
-                    {loading ? "Loading..." : "No results found"}
+                    {loading ? 'Loading...' : 'No results found'}
                   </div>
                 )}
               </div>

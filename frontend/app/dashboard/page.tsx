@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { Card } from '@/components/ui/card';
-import { Doughnut } from 'react-chartjs-2';
 import { formatDistanceToNow } from 'date-fns';
+import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { Doughnut } from 'react-chartjs-2';
 
 interface UserStats {
   total_comparisons: number;

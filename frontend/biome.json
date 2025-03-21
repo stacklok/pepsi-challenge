@@ -3,11 +3,11 @@
   "vcs": {
     "enabled": true,
     "clientKind": "git",
-		"useIgnoreFile": true,
-		"defaultBranch": "main"
+    "useIgnoreFile": true,
+    "defaultBranch": "main"
   },
   "files": {
-		"ignoreUnknown": true,
+    "ignoreUnknown": true,
     "ignore": [".next/**/*"]
   },
   "formatter": {
@@ -20,7 +20,10 @@
   "linter": {
     "enabled": true,
     "rules": {
-      "recommended": true
+      "recommended": true,
+      "complexity": {
+        "noForEach": "off"
+      }
     }
   },
   "javascript": {
