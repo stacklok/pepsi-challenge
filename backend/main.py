@@ -1,3 +1,6 @@
+import asyncio
+from enum import Enum
+import threading
 from peft import PeftModel
 import torch
 from fastapi import FastAPI, Request, HTTPException, Form, Query
@@ -18,6 +21,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from typing import Optional
 from sqlalchemy import or_, select, case
 from migration import migrate_database
+from transformers import TextIteratorStreamer
 import csv
 import io
 import json
@@ -139,8 +143,19 @@ chat_finetuned_model, chat_finetuned_tokenizer = load_peft_model(
     Config.CHAT_BASE_MODEL_NAME, Config.CHAT_FINETUNED_MODEL_NAME
 )
 
-
 def test_completion(model, tokenizer, prompt, mode="fim"):
+    """
+    Generate completions with proper preservation of whitespace and indentation.
+    
+    Args:
+        model: The language model to use
+        tokenizer: The tokenizer corresponding to the model
+        prompt: List of input prompts
+        mode: Either "fim" (Fill-in-Middle) or "chat"
+        
+    Returns:
+        List of generated completions
+    """
     if mode == "fim":
         prompt = [
             f"""<|fim_prefix|>{x["prefix"]}<|fim_suffix|>{x["suffix"]}<|fim_middle|>"""
@@ -154,7 +169,6 @@ def test_completion(model, tokenizer, prompt, mode="fim"):
 
     if not IS_MACOS:
         from unsloth import FastLanguageModel
-
         FastLanguageModel.for_inference(model)
 
     inputs = tokenizer(prompt, return_tensors="pt").to(device)
@@ -166,11 +180,14 @@ def test_completion(model, tokenizer, prompt, mode="fim"):
     outputs = tokenizer.batch_decode(outputs)
 
     if mode == "fim":
+        # For FIM mode, preserve all whitespace including indentation
+        # Just remove the special tokens and keep the content after fim_middle
         outputs = [
-            x.split("<|fim_middle|>")[-1].replace("<|endoftext|>", "").strip()
+            x.split("<|fim_middle|>")[-1].replace("<|endoftext|>", "")
             for x in outputs
         ]
     elif mode == "chat":
+        # For chat mode, we can still strip as it's not indent-sensitive
         outputs = [
             x.split("<|im_start|>assistant")[-1]
             .replace("<|im_end|>", "")
@@ -181,11 +198,314 @@ def test_completion(model, tokenizer, prompt, mode="fim"):
 
     return outputs
 
-
 @app.get("/")
 async def home():
     return {"message": "API is running"}
 
+class Mode(str, Enum):
+    FIM = "fim"
+    CHAT = "chat"
+
+def prepare_prompt(text, mode, prefix=None, suffix=None):
+    """Create prompt based on generation mode with proper FIM formatting"""
+    if mode == Mode.FIM:
+        # In FIM mode, ensure prefix, suffix and middle tags are properly formatted
+        clean_prefix = prefix.strip() if prefix else ""
+        clean_suffix = suffix.strip() if suffix else ""
+        return f"""<|fim_prefix|>{clean_prefix}<|fim_suffix|>{clean_suffix}<|fim_middle|>"""
+    elif mode == Mode.CHAT:
+        return f"""<|im_start|>system\nYou are an expert on the Codegate project. Answer user's questions accurately.<|im_end|>\n<|im_start|>user\n{text.strip()}<|im_end|>\n<|im_start|>assistant\n"""
+
+async def process_fim(model, tokenizer, inputs, model_letter):
+    """
+    Process streaming of FIM completions with proper newline placement.
+    Ensures the first token has a newline at the beginning, not within the indentation.
+    """
+    # Create the streamer
+    streamer = TextIteratorStreamer(
+        tokenizer, 
+        skip_special_tokens=True,
+        timeout=10.0
+    )
+    
+    # Start generation thread
+    thread = threading.Thread(
+        target=lambda: model.generate(
+            **inputs,
+            streamer=streamer,
+            max_new_tokens=512,
+            temperature=0.1,
+            do_sample=True
+        )
+    )
+    thread.daemon = True
+    thread.start()
+    
+    # Variables to track generation state
+    in_special_tokens = True
+    accumulated_text = ""
+    last_sent_pos = 0
+    is_first_real_token = True
+    
+    # Initially send a newline as the very first token
+    if is_first_real_token:
+        yield "data: " + json.dumps({
+            "type": "token",
+            "model": model_letter,
+            "text": "\n"
+        }) + "\n\n"
+        is_first_real_token = False
+    
+    # Process tokens
+    for token in streamer:
+        # Skip special tokens at the beginning
+        if in_special_tokens:
+            if "<|" in token or token.strip() in ["system", "user", "assistant"]:
+                continue
+            in_special_tokens = False
+        
+        # Clean any FIM markers
+        clean_token = token.replace("<|fim_suffix|>", "").replace("<|fim_middle|>", "")
+        
+        # Only process if the token has content
+        if not clean_token:
+            continue
+        
+        # Add to accumulated text
+        accumulated_text += clean_token
+        
+        # Send updates at reasonable intervals
+        current_pos = len(accumulated_text)
+        if current_pos > last_sent_pos + 5:  # Send after accumulating 5+ characters
+            new_content = accumulated_text[last_sent_pos:]
+            
+            # Only send if there's meaningful content
+            if new_content:
+                yield "data: " + json.dumps({
+                    "type": "token",
+                    "model": model_letter,
+                    "text": new_content
+                }) + "\n\n"
+                
+                last_sent_pos = current_pos
+                await asyncio.sleep(0)  # Force flush
+    
+    # Send any remaining content
+    if len(accumulated_text) > last_sent_pos:
+        remaining = accumulated_text[last_sent_pos:]
+        if remaining:
+            yield "data: " + json.dumps({
+                "type": "token",
+                "model": model_letter,
+                "text": remaining
+            }) + "\n\n"
+
+async def process_chat(model, tokenizer, inputs, model_letter):
+    """
+    Process streaming for chat mode while filtering out the system prompt and handling code blocks.
+    """
+    streamer = TextIteratorStreamer(
+        tokenizer, 
+        skip_special_tokens=True,
+        timeout=10.0
+    )
+    
+    thread = threading.Thread(
+        target=lambda: model.generate(
+            **inputs,
+            streamer=streamer,
+            max_new_tokens=512,
+            temperature=0.1,
+            do_sample=True
+        )
+    )
+    thread.daemon = True
+    thread.start()
+
+    # Variables for filtering out the system prompt.
+    buffer = ""
+    system_prompt_removed = False
+    marker = "assistant\n"
+
+    # Variables for code block handling.
+    in_code_block = False
+    code_content = ""
+
+    for token in streamer:
+        # Remove system prompt until marker is found.
+        if not system_prompt_removed:
+            buffer += token
+            if marker in buffer:
+                # Once marker is found, split and yield the remaining text (if any).
+                _, remainder = buffer.split(marker, 1)
+                if remainder.strip():
+                    yield "data: " + json.dumps({
+                        "type": "token",
+                        "model": model_letter,
+                        "text": remainder
+                    }) + "\n\n"
+                system_prompt_removed = True
+                buffer = ""
+            continue
+
+        # Now process tokens normally.
+        # Check for code block markers.
+        if "```" in token:
+            if not in_code_block:
+                # Starting a code block.
+                in_code_block = True
+                parts = token.split("```", 1)
+                # Yield any text before the code block marker.
+                if parts[0]:
+                    yield "data: " + json.dumps({
+                        "type": "token",
+                        "model": model_letter,
+                        "text": parts[0]
+                    }) + "\n\n"
+                # Begin code accumulation with the opening fence.
+                code_content = "```"
+                if len(parts) > 1:
+                    code_content += parts[1]
+            else:
+                # Ending a code block.
+                code_content += token
+                yield "data: " + json.dumps({
+                    "type": "token",
+                    "model": model_letter,
+                    "text": code_content,
+                    "is_code_block": True
+                }) + "\n\n"
+                in_code_block = False
+                code_content = ""
+            continue
+
+        # If we are inside a code block, keep accumulating tokens.
+        if in_code_block:
+            code_content += token
+            continue
+
+        # Otherwise, yield tokens normally.
+        if token.strip():
+            yield "data: " + json.dumps({
+                "type": "token",
+                "model": model_letter,
+                "text": token
+            }) + "\n\n"
+            await asyncio.sleep(0) 
+    
+    # Send any remaining code block at the end
+    if in_code_block and code_content:
+        # If code block wasn't closed, add closing backticks
+        if not code_content.endswith("```"):
+            code_content += "```"
+            
+        yield "data: " + json.dumps({
+            "type": "token",
+            "model": model_letter,
+            "text": code_content,
+            "is_code_block": True
+        }) + "\n\n"
+
+@app.post("/api/generate-stream")
+async def generate_stream(
+    request: Request,
+    mode: Mode = Form(...),
+    prefix: Optional[str] = Form(None),
+    suffix: Optional[str] = Form(None),
+    prompt: Optional[str] = Form(None),
+    experiment_id: Optional[str] = Form(None),
+):
+    """
+    Streaming endpoint with fixed code block handling.
+    """
+    # Authentication check
+    if "user" not in request.session:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    # Input validation
+    if mode == Mode.FIM and prefix is None:
+        raise HTTPException(status_code=400, detail="Prefix is required for FIM mode")
+    if mode == Mode.CHAT and (not prompt or prompt.strip() == ""):
+        raise HTTPException(status_code=400, detail="Prompt is required for CHAT mode")
+    
+    # Select which model is base vs finetuned
+    model_a_is_base = random.choice([True, False])
+    
+    # Select models based on mode
+    if mode == Mode.FIM:
+        model_a = fim_base_model if model_a_is_base else fim_finetuned_model
+        tokenizer_a = fim_base_tokenizer if model_a_is_base else fim_finetuned_tokenizer
+        model_b = fim_finetuned_model if model_a_is_base else fim_base_model
+        tokenizer_b = fim_finetuned_tokenizer if model_a_is_base else fim_base_tokenizer
+        prepared_prompt = prepare_prompt(None, mode, prefix, suffix or "")
+    else:  # CHAT mode
+        model_a = chat_base_model if model_a_is_base else chat_finetuned_model
+        tokenizer_a = chat_base_tokenizer if model_a_is_base else chat_finetuned_tokenizer
+        model_b = chat_finetuned_model if model_a_is_base else chat_base_model
+        tokenizer_b = chat_finetuned_tokenizer if model_a_is_base else chat_base_tokenizer
+        prepared_prompt = prepare_prompt(prompt, mode)
+    
+    # Tokenize inputs
+    inputs_a = tokenizer_a([prepared_prompt], return_tensors="pt").to(device)
+    inputs_b = tokenizer_b([prepared_prompt], return_tensors="pt").to(device)
+    
+    # True streaming generator
+    async def token_stream():
+        # Send header first with immediate flush
+        yield "data: " + json.dumps({
+            "type": "header",
+            "modelAIsBase": model_a_is_base
+        }) + "\n\n"
+        
+        # Model A streaming
+        yield "data: " + json.dumps({"type": "model_start", "model": "A"}) + "\n\n"
+        
+        # Handle based on mode
+        if mode == Mode.FIM:
+            # Process FIM mode with improved newline placement
+            async for event in process_fim(model_a, tokenizer_a, inputs_a, "A"):
+                yield event
+        else:
+            # Use the improved chat processing function
+            async for event in process_chat(model_a, tokenizer_a, inputs_a, "A"):
+                yield event
+        
+        # End Model A
+        yield "data: " + json.dumps({"type": "model_end", "model": "A"}) + "\n\n"
+        
+        # Short pause between models
+        await asyncio.sleep(0.2)
+        
+        # Model B streaming
+        yield "data: " + json.dumps({"type": "model_start", "model": "B"}) + "\n\n"
+        
+        # Handle based on mode
+        if mode == Mode.FIM:
+            # Process FIM mode with improved newline placement
+            async for event in process_fim(model_b, tokenizer_b, inputs_b, "B"):
+                yield event
+        else:
+            # Use the improved chat processing function
+            async for event in process_chat(model_b, tokenizer_b, inputs_b, "B"):
+                yield event
+        
+        # End Model B
+        yield "data: " + json.dumps({"type": "model_end", "model": "B"}) + "\n\n"
+        
+        # Complete the stream
+        yield "data: " + json.dumps({"type": "complete"}) + "\n\n"
+    
+    # Return streaming response with specific settings to prevent buffering
+    return StreamingResponse(
+        token_stream(), 
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Content-Encoding": "identity"  # Disable compression
+        }
+    )
 
 @app.post("/api/generate")
 async def generate(

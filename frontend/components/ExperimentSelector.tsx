@@ -38,10 +38,10 @@ export const ExperimentSelector: FC<ExperimentSelectorProps> = ({
   }
 
   return (
-    <div className="mb-4">
+    <div className="flex flex-row align-middle content-center">
       <label
         htmlFor="experiment-select"
-        className="block text-lg font-medium mb-2"
+        className="block text-md font-medium mr-4 content-center"
       >
         Choose your experiments
       </label>

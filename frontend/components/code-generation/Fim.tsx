@@ -20,10 +20,14 @@ export function Fim({
   return (
     <>
       <div>
-        <label htmlFor="code-input" className="block text-lg font-medium mb-2">
+        <label
+          htmlFor="code-input"
+          className="block text-medium font-medium mb-2"
+        >
           Enter your code snippet
         </label>
         <Textarea
+          className="h-48"
           id="code-input"
           value={prefix}
           onChange={(e) => setPrefix(e.target.value)}

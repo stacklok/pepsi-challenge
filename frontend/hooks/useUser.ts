@@ -1,5 +1,5 @@
 import type { User } from '@/types/user';
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 export const useUser = () => {
   const [user, setUser] = useState<User>(null);

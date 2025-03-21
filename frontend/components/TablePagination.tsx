@@ -1,11 +1,11 @@
 import {
   Pagination,
   PaginationContent,
+  PaginationEllipsis,
   PaginationItem,
   PaginationLink,
   PaginationNext,
   PaginationPrevious,
-  PaginationEllipsis,
 } from '@/components/ui/pagination';
 
 export const TablePagination = ({
@@ -53,7 +53,7 @@ export const TablePagination = ({
         totalPages,
       ];
     }
-    
+
     if (showLeftDots) {
       const rightRange = Array.from(
         { length: visiblePageCount - 2 },
@@ -61,7 +61,7 @@ export const TablePagination = ({
       );
       return [1, 'leftEllipsis', ...rightRange];
     }
-    
+
     if (showRightDots) {
       const leftRange = Array.from(
         { length: visiblePageCount - 2 },
