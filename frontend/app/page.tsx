@@ -19,7 +19,7 @@ import { useUser } from '@/hooks/useUser';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { XCircleIcon } from '@heroicons/react/24/solid';
 import type React from 'react';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import CodeComparison from '../components/CodeComparison';
 
 export default function Home() {
@@ -46,10 +46,7 @@ export default function Home() {
     isStreaming,
     streamingResults,
     currentStreamingModel,
-    streamProgress,
   } = useModels({ prompt, prefix, suffix, preferredModel, experimentId });
-
-  console.log({ streamProgress: JSON.stringify(streamProgress) });
 
   useEffect(() => {
     if (experimentId !== prevExperiment) {
@@ -108,8 +105,8 @@ export default function Home() {
     );
   };
 
-  const getModelAContent = () => {
-    if (results) {
+  const modelAContent = useMemo(() => {
+    if (!isStreamingMode && results) {
       return (
         prefix +
         (modelAIsBase ? results.baseResponse : results.finetunedResponse) +
@@ -117,14 +114,14 @@ export default function Home() {
       );
     }
     // If no results but streaming
-    if (streamingResults?.modelA) {
-      return streamingResults.modelA;
+    if (isStreamingMode) {
+      return prefix + streamingResults.modelA + suffix;
     }
     return '';
-  };
+  }, [isStreamingMode, modelAIsBase, results, streamingResults, prefix, suffix]);
 
-  const getModelBContent = () => {
-    if (results) {
+  const modelBContent = useMemo(() => {
+    if (!isStreamingMode && results) {
       return (
         prefix +
         (modelAIsBase ? results.finetunedResponse : results.baseResponse) +
@@ -132,11 +129,11 @@ export default function Home() {
       );
     }
     // If no results but streaming
-    if (streamingResults?.modelB) {
-      return streamingResults.modelB;
+    if (isStreamingMode) {
+      return prefix + streamingResults.modelB + suffix;
     }
     return '';
-  };
+  }, [isStreamingMode, modelAIsBase, results, streamingResults, prefix, suffix]);
 
   if (!user) {
     return (
@@ -265,7 +262,7 @@ export default function Home() {
                 </div>
                 <CodeComparison
                   title="Model A"
-                  code={getModelAContent()}
+                  code={modelAContent}
                   isFim={experimentId?.includes('FIM')}
                   isGenerating={currentStreamingModel === 'A'}
                 />
@@ -294,7 +291,7 @@ export default function Home() {
                 </div>
                 <CodeComparison
                   title="Model B"
-                  code={getModelBContent()}
+                  code={modelBContent}
                   isFim={experimentId?.includes('FIM')}
                   isGenerating={currentStreamingModel === 'B'}
                 />
